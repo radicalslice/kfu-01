@@ -16,8 +16,8 @@ player = {
   frames_kantic = {11},
   frames_kick = {10},
   frames_crouch = {28},
-  frames_cpantic = {13},
-  frames_cpunch = {29},
+  frames_cpantic = {29},
+  frames_cpunch = {30},
   frames_ckantic = {14},
   frames_ckick = {30},
   frame_index = 1,
@@ -75,18 +75,18 @@ player = {
     if p.state == "punch" then
       if face_right then
         local left = p.draw_x + 8
-        return true,left,87,left+2,90
+        return true,left,p.draw_y+6,left+2,p.draw_y+8
         else
         local left = p.draw_x -3
-        return true,left,87,left+2,89
+        return true,left,p.draw_y+6,left+2,p.draw_y+8
       end
     elseif p.state == "kick" then
       if face_right then
         local left = p.draw_x + 7
-        return true,left,84,left + 5,89
+        return true,left,p.draw_y+4,left + 5,p.draw_y+7
         else
         local left = p.draw_x -5
-        return true,left,84,left + 5,89
+        return true,left,p.draw_y+4,left + 5,p.draw_y+7
       end
     elseif p.state == "cpunch" then
       if face_right then
@@ -96,7 +96,7 @@ player = {
       end
    elseif p.state == "ckick" then
       if face_right then
-        return true,p.draw_x + 7,p.draw_y+4,p.draw_x + 12,p.draw_y+8
+        return true,p.draw_x + 6,p.draw_y+4,p.draw_x + 11,p.draw_y+8
         else
         return true,p.draw_x - 5,p.draw_y+4,p.draw_x,p.draw_y+8
       end
@@ -115,6 +115,7 @@ player = {
     elseif p.map_x > (map_extent - 64) then
       p.draw_x = min(120,128 - (map_extent - p.map_x))
     end
+
     local crouching = p.state == "crouch" or p.state == "cpunch" or p.state == "ckick" or p.state == "cpantic" or p.state == "ckantic"
     spr(p.frames_current[p.frame_index], p.draw_x, p.draw_y, 1, crouching and 1 or 2, face_right and true or false,false)
 
@@ -123,6 +124,7 @@ player = {
     -- rect(x0, y0, x1, y1,11)
 
 
+    -- Draw the attack-y bits
     if p.state == "punch" then
       spr(21, face_right and p.draw_x + 8 or p.draw_x - 2, p.draw_y + 8)
     elseif p.state == "kantic" then
@@ -132,13 +134,13 @@ player = {
     elseif p.state == "cpunch" then
       spr(21,face_right and p.draw_x + 1 or p.draw_x - 1,p.draw_y+4,1,1,face_right and true or false)
     elseif p.state == "ckick" then
-      spr(7,face_right and p.draw_x + 7 or p.draw_x - 7,p.draw_y,1,1,face_right and true or false)
+      spr(7,face_right and p.draw_x + 6 or p.draw_x - 6,p.draw_y,1,1,face_right and true or false)
     end
 
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then
-      rect(x2, y2, x3, y3,14)
+      -- rect(x2, y2, x3, y3,14)
     end
     pal()
     -- printh(p.state)
@@ -146,6 +148,22 @@ player = {
 }
 
 function p_update_stand(p)
+    if btn(4) then
+      p.state = "pantic"
+      p.state_t = 0.05
+      p.frames_current = p.frames_pantic
+      p.since_last_state = 0
+      return
+    end
+
+    if btn(5) then
+      p.state = "kantic"
+      p.state_t = 0.05
+      p.frames_current = p.frames_kantic
+      p.since_last_state = 0
+      return
+    end
+
     if btn(0) then
       p.direction = 0 
       p.frames_current = p.frames_walk
@@ -158,19 +176,7 @@ function p_update_stand(p)
       p.frames_current = p.frames_crouch
       p.state = "crouch"
       p.draw_y += 8
-    end
-
-    if btn(4) then
-      p.state = "pantic"
-      p.state_t = 0.05
-      p.frames_current = p.frames_pantic
-      p.since_last_state = 0
-    end
-    if btn(5) then
-      p.state = "kantic"
-      p.state_t = 0.05
-      p.frames_current = p.frames_kantic
-      p.since_last_state = 0
+      return
     end
 end
 
@@ -236,13 +242,13 @@ end
 function p_update_crouch(p, dt)
     if btn(4) then
       p.state = "cpantic"
-      p.state_t = 0.05
+      p.state_t = 0.1
       p.frames_current = p.frames_cpantic
       p.since_last_state = 0
     end
     if btn(5) then
       p.state = "ckantic"
-      p.state_t = 0.05
+      p.state_t = 0.1
       p.frames_current = p.frames_ckantic
       p.since_last_state = 0
     end
