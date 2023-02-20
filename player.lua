@@ -15,11 +15,11 @@ player = {
   frames_punch = {8},
   frames_kantic = {11},
   frames_kick = {10},
-  frames_crouch = {28},
-  frames_cpantic = {29},
-  frames_cpunch = {30},
-  frames_ckantic = {14},
-  frames_ckick = {30},
+  frames_crouch = {33},
+  frames_cpantic = {34},
+  frames_cpunch = {35},
+  frames_ckantic = {36},
+  frames_ckick = {37},
   frame_index = 1,
   frames_current = nil,
   direction = 0,
@@ -82,23 +82,22 @@ player = {
       end
     elseif p.state == "kick" then
       if face_right then
-        local left = p.draw_x + 7
-        return true,left,p.draw_y+4,left + 5,p.draw_y+7
+        return true,p.draw_x+8,p.draw_y+4,p.draw_x + 12,p.draw_y+7
         else
         local left = p.draw_x -5
-        return true,left,p.draw_y+4,left + 5,p.draw_y+7
+        return true,left,p.draw_y+4,left + 3,p.draw_y+7
       end
     elseif p.state == "cpunch" then
       if face_right then
-        return true,p.draw_x + 6,p.draw_y+3,p.draw_x + 9,p.draw_y+6
+        return true,p.draw_x + 6,p.draw_y+6,p.draw_x + 10,p.draw_y+9
         else
-        return true,p.draw_x - 2,p.draw_y+3,p.draw_x + 1,p.draw_y+6
+        return true,p.draw_x - 3,p.draw_y+6,p.draw_x,p.draw_y+9
       end
    elseif p.state == "ckick" then
       if face_right then
-        return true,p.draw_x + 6,p.draw_y+4,p.draw_x + 11,p.draw_y+8
+        return true,p.draw_x + 8,p.draw_y+5,p.draw_x + 12,p.draw_y+8
         else
-        return true,p.draw_x - 5,p.draw_y+4,p.draw_x,p.draw_y+8
+        return true,p.draw_x - 5,p.draw_y+5,p.draw_x - 1,p.draw_y+8
       end
     
 
@@ -106,7 +105,7 @@ player = {
 
     return false
   end,
-  draw = function(p, dt)
+  draw = function(p, last_extent, dt)
     palt(0, false)
     palt(15, true)
     local face_right = p.direction == 1
@@ -116,8 +115,7 @@ player = {
       p.draw_x = min(120,128 - (map_extent - p.map_x))
     end
 
-    local crouching = p.state == "crouch" or p.state == "cpunch" or p.state == "ckick" or p.state == "cpantic" or p.state == "ckantic"
-    spr(p.frames_current[p.frame_index], p.draw_x, p.draw_y, 1, crouching and 1 or 2, face_right and true or false,false)
+    spr(p.frames_current[p.frame_index], p.draw_x, p.draw_y, 1, 2, face_right and true or false,false)
 
     -- Draw player's collision box
     local x0, y0, x1, y1 = p:getBB()
@@ -132,25 +130,27 @@ player = {
     elseif p.state == "kick" then
       spr(6,face_right and p.draw_x + 4 or p.draw_x - 4,p.draw_y,1,2,face_right and true or false)
     elseif p.state == "cpunch" then
-      spr(21,face_right and p.draw_x + 1 or p.draw_x - 1,p.draw_y+4,1,1,face_right and true or false)
+      spr(21,face_right and p.draw_x + 2 or p.draw_x - 2,p.draw_y+7,1,1,face_right and true or false)
     elseif p.state == "ckick" then
-      spr(7,face_right and p.draw_x + 6 or p.draw_x - 6,p.draw_y,1,1,face_right and true or false)
+      spr(7,face_right and p.draw_x + 7 or p.draw_x - 7,p.draw_y+2,1,1,face_right and true or false)
     end
 
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then
       -- rect(x2, y2, x3, y3,14)
+      -- last_extent = face_right and x3 or x2
     end
     pal()
     -- printh(p.state)
+    return last_extent
   end,
 }
 
 function p_update_stand(p)
     if btn(4) then
       p.state = "pantic"
-      p.state_t = 0.05
+      p.state_t = 0.1
       p.frames_current = p.frames_pantic
       p.since_last_state = 0
       return
@@ -158,7 +158,7 @@ function p_update_stand(p)
 
     if btn(5) then
       p.state = "kantic"
-      p.state_t = 0.05
+      p.state_t = 0.1
       p.frames_current = p.frames_kantic
       p.since_last_state = 0
       return
@@ -175,7 +175,7 @@ function p_update_stand(p)
     elseif btn(3) then
       p.frames_current = p.frames_crouch
       p.state = "crouch"
-      p.draw_y += 8
+      p.draw_y += 3
       return
     end
 end
@@ -201,7 +201,7 @@ function p_update_pantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "punch"
       p.since_last_state = 0
-      p.state_t = 0.10
+      p.state_t = 0.1
       p.frames_current = p.frames_punch
     end
 end
@@ -256,7 +256,7 @@ function p_update_crouch(p, dt)
       p.state = "stand"
       p.since_last_state = 0
       p.frames_current = p.frames_stand
-      p.draw_y -= 8
+      p.draw_y -= 3
     end
 end
 
