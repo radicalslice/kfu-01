@@ -5,8 +5,13 @@ player = {
   state_t = 0,
   frame_wait = 0.1,
   map_x = map_extent - 16,
+  vx = 0,
   draw_x = 64,
   draw_y = 80,
+  health = 100,
+  hugged_by_count = 0, 
+  mash_count_p = 0,
+  mash_count_k = 0,
   since_last_frame = 0,
   since_last_state = 0,
   frames_walk = {2,4,3,4},
@@ -28,6 +33,7 @@ player = {
     p.state = "stand"
   end,
   update = function(p, dt)
+    p.vx = 0
     if p.state == "stand" then
       p_update_stand(p, dt)
     elseif p.state == "walk" then
@@ -50,6 +56,8 @@ player = {
       p_update_ckantic(p, dt)
     elseif p.state == "ckick" then
       p_update_ckick(p, dt)
+    elseif p.state == "hugged" then
+      p_update_hugged(p, dt)
     end
     p.since_last_frame += dt
 
@@ -145,7 +153,76 @@ player = {
     -- printh(p.state)
     return last_extent
   end,
+  handle_hug = function(p, current_huggers)
+    p.hugged_by_count = current_huggers
+    if p.hugged_by_count > 0 and (p.state == "stand" or p.state == "crouch" or p.state == "walk") then
+      p.frames_current = (p.state == "crouch") and p.frames_crouch or p.frames_stand
+      p.state = "hugged"
+      p.since_last_state = 0
+      p.frame_index = 1
+    end
+  end
 }
+
+function p_update_hugged(p, dt)
+  -- deduct some health in here
+  if p.state != "stand" and p.state != "crouch" and p.state != "hugged" then
+    return
+  end
+
+  p.health -= ceil(dt * p.hugged_by_count * 10)
+  if p.health <= 0 then
+    stop()
+  end
+
+  if p.hugged_by_count == 0 then
+    p.state = "stand"
+    p.frames_current = p.frames_stand
+    p.frame_index = 1
+    p.since_last_state = 0
+    return
+  end
+
+  if btn(3) and p.frames_current == p.frames_stand then
+    p.draw_y += 3
+    p.frames_current = p.frames_crouch
+    return
+  elseif not btn(3) and p.frames_current == p.frames_crouch then
+    p.frames_current = p.frames_stand
+    p.draw_y -= 3
+    return
+  end
+
+  if btnp(4) then
+    p.mash_count_p += 1
+    if p.mash_count_p > p.hugged_by_count then
+      if p.frames_current == p.frames_crouch then
+        p.state = "cpantic"
+        p.frames_current = p.frames_cpantic
+      else 
+        p.state = "pantic"
+        p.frames_current = p.frames_pantic
+      end
+      p.since_last_state = 0
+      p.mash_count_p , p.mash_count_k = 0,0
+      return
+    end
+  elseif btnp(5) then
+    p.mash_count_k += 1
+    if p.mash_count_k > p.hugged_by_count then
+      if p.frames_current == p.frames_crouch then
+        p.state = "ckantic"
+        p.frames_current = p.frames_ckantic
+      else
+        p.state = "kantic"
+        p.frames_current = p.frames_kantic
+      end
+      p.since_last_state = 0
+      p.mash_count_p , p.mash_count_k = 0,0
+      return
+    end
+  end
+end
 
 function p_update_stand(p)
     if btn(4) then
@@ -189,9 +266,11 @@ function p_update_walk(p)
   elseif btn(0) and p.map_x > 0 then
     p.direction = 0 
     p.map_x -= 1
+    p.vx = player.draw_x == 65 and -1 or 0
   elseif btn(1) and p.map_x < (map_extent - 8) then
     p.direction = 1
     p.map_x += 1
+    p.vx = player.draw_x == 65 and 1 or 0
   end
 end
 

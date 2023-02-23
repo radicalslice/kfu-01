@@ -1,8 +1,8 @@
 bmgr = {
   baddies = {},
 
-  update = function(bm,dt)
-    foreach(bm.baddies, function(b) b:update(dt) end)
+  update = function(bm,dt,vx)
+    foreach(bm.baddies, function(b) b:update(dt,vx) end)
   end,
 
   draw = function(bm)
@@ -65,7 +65,7 @@ function new_tree(direction, start_x)
   local baddie = {
     direction = direction,
     x = start_x,
-    vx = direction == 0 and -1.1 or 1.1,
+    vx = direction == 0 and -1.2 or 1.2,
     y = 80,
     frames_walk = {65,66},
     frames_threat = {67,68},
@@ -73,12 +73,12 @@ function new_tree(direction, start_x)
     frame_wait = 0.2,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt)
+    update = function(b,dt,vx)
       if b.state == "hug" then
         return
       end
 
-      b.x += b.vx
+      b.x += b.vx - vx
       b.since_last_frame += dt
 
       if b.since_last_frame > b.frame_wait then
@@ -126,7 +126,7 @@ function new_flower(direction, start_x)
   local baddie = {
     direction = direction,
     x = start_x,
-    vx = direction == 0 and -1.1 or 1.1,
+    vx = direction == 0 and -1.2 or 1.2,
     y = 89,
     frames_walk = {87,88,89,90},
     frames_threat = {67,68},
@@ -134,12 +134,12 @@ function new_flower(direction, start_x)
     frame_wait = 0.2,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt)
+    update = function(b,dt,vx)
       if b.state == "hug" then
         return
       end
 
-      b.x += b.vx
+      b.x += b.vx - vx
       b.since_last_frame += dt
 
       if b.since_last_frame > b.frame_wait then

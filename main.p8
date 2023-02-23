@@ -4,29 +4,41 @@ __lua__
 
 #include player.lua
 #include baddie.lua
+#include level.lua
 
 extent = 0
+batches = {}
 function _init()
   last_ts = 0
   player:reset()
   -- spawn :: Num -> (tree || flower) -> Direction -> Void
-  bmgr:spawn({"flower","flower","flower"}, 0)
-  --bmgr:spawn(3, 0)
+  -- bmgr:spawn({"flower", "flower", "flower"}, 1)
+  batches = parse_level(levels[1])
 end
 
 function _update()
   local now = time()
   local dt = now - last_ts
   player:update(dt)
-  bmgr:update(dt)
+  bmgr:update(dt, player.vx)
 
   local px0, py0, px1, py1 = player:getBB()
   local current_huggers = bmgr:player_collision(px0,py0,px1,py1)
+
+  player:handle_hug(current_huggers)
 
   local checkme,px0,py0,px1,py1 = player:getAtkBB()
   if checkme then
     bmgr:combat_collision(px0,py0,px1,py1)
   end
+
+  -- check if we need to spawn anything
+  foreach(batches, function(batch) 
+    if player.map_x < batch.distance then
+      bmgr:spawn(batch.baddies, batch.direction)
+      del(batches, batch)
+    end
+  end)
 
   last_ts = now
 end
@@ -52,8 +64,18 @@ function _draw()
   extent = player:draw(extent)
 
   line(extent,0,extent,128,14)
-  print("map_x: ".. player.map_x, 4,4,0)
-  print("draw_x: ".. player.draw_x, 4,10,0)
+  print("map_x: ".. player.map_x, 64,4,0)
+  -- print("batches: ".. #batches, 64,12,0)
+  print("draw_x: ".. player.draw_x, 64,12,0)
+  print("health: "..player.health, 4, 4, 3)
+  print("p: ", 4, 13, 2)
+  for i=1,player.mash_count_p do
+    rectfill(4 + (8*i), 13, 8 + (8*i), 17, 2)
+  end
+  print("k: ", 4, 21, 1)
+  for i=1,player.mash_count_k do
+    rectfill(4 + (8*i), 21, 8 + (8*i), 25, 1)
+  end
 end
 
 function collides(x0, y0, x1, y1, x2, y2, x3, y3)
