@@ -1,7 +1,7 @@
 levels = {
   {
     direction = 0,
-    batches = "200:2t1f:1;150:1f:1;100:2t1f:0",
+    -- batches = "200:2t1f:1;150:1f:1;100:2t1f:0",
   },
   {
     direction = 1,

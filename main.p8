@@ -21,6 +21,7 @@ function _init()
   -- bmgr:spawn({"flower", "flower", "flower"}, 1)
   level.batches = parse_batches(levels[level_index].batches)
   level.direction = levels[level_index].direction
+  bmgr:spawn_boss(1, 64)
   player:reset(level.direction)
   __update = game_update
   __draw = game_draw
@@ -43,12 +44,21 @@ function game_update()
   local px0, py0, px1, py1 = player:getBB()
   local current_huggers = bmgr:player_collision(px0,py0,px1,py1)
 
+  px0, py0, px1, py1 = player:getFrontBB()
+  local boss_collide = bmgr:player_boss_collision(px0,py0,px1,py1)
+  player:handle_boss_collision(boss_collide)
+
+  px0, py0, px1, py1 = player:getFrontBufferBB()
+  bmgr:player_boss_buffer_collision(px0,py0,px1,py1)
+
   player:handle_hug(current_huggers)
 
   local checkme,px0,py0,px1,py1 = player:getAtkBB()
   if checkme then
     bmgr:combat_collision(px0,py0,px1,py1)
+    bmgr:boss_combat_collision(px0,py0,px1,py1)
   end
+
 
   -- check if we need to spawn anything
   foreach(level.batches, function(batch) 
@@ -71,7 +81,6 @@ function game_update()
   -- check if player has reached end of level
   if is_level_end(player.map_x, level.direction) then
     level_index += 1
-    printh("new level index: "..level_index)
     if level_index > #levels then -- display victory msg
       __update = victory_update
       __draw = victory_draw
@@ -80,7 +89,6 @@ function game_update()
     -- load new level
     level.batches = parse_batches(levels[level_index].batches)
     level.direction = levels[level_index].direction
-    printh("new level direction: "..level.direction)
     player:reset(level.direction)
     bmgr:reset()
   end
@@ -118,14 +126,18 @@ function game_draw()
   print("map_x: ".. player.map_x, 64,4,0)
   -- print("batches: ".. #batches, 64,12,0)
   print("draw_x: ".. player.draw_x, 64,12,0)
-  print("health: "..player.health, 4, 4, 3)
-  print("p: ", 4, 13, 2)
+  print("health: "..player.health, 4, 2, 3)
+  print("p: ", 4, 9, 2)
   for i=1,player.mash_count_p do
-    rectfill(4 + (8*i), 13, 8 + (8*i), 17, 2)
+    rectfill(4 + (8*i), 9, 8 + (8*i), 11, 2)
   end
-  print("k: ", 4, 21, 1)
+  print("k: ", 4, 15, 1)
   for i=1,player.mash_count_k do
-    rectfill(4 + (8*i), 21, 8 + (8*i), 25, 1)
+    rectfill(4 + (8*i), 15, 8 + (8*i), 17, 1)
+  end
+
+  if bmgr.boss != nil then
+
   end
 end
 

@@ -26,6 +26,7 @@ player = {
     p.map_x = level_direction == 0 and map_extent - 16 or 16
     p.vx = 0
     p.hugged_by_count = 0
+    p.blocked = false
   end,
   update = function(p, dt)
     p.vx = 0
@@ -71,6 +72,22 @@ player = {
       return p.draw_x - 1,p.draw_y,p.draw_x + 8,p.draw_y + 16
     else
       return p.draw_x,p.draw_y,p.draw_x + 8,p.draw_y + 16
+    end
+  end,
+  getFrontBB = function(p)
+    local face_right = p.direction == 1
+    if face_right then
+      return p.draw_x+6,p.draw_y,p.draw_x + 8,p.draw_y + 16
+    else
+      return p.draw_x,p.draw_y,p.draw_x + 2,p.draw_y + 16
+    end
+  end,
+  getFrontBufferBB = function(p)
+    local face_right = p.direction == 1
+    if face_right then
+      return p.draw_x+11,p.draw_y,p.draw_x + 15,p.draw_y + 16
+    else
+      return p.draw_x-7,p.draw_y,p.draw_x - 4,p.draw_y + 16
     end
   end,
   getAtkBB = function(p)
@@ -124,6 +141,12 @@ player = {
     local x0, y0, x1, y1 = p:getBB()
     -- rect(x0, y0, x1, y1,11)
 
+    -- Find the front collision box
+    x0, y0, x1, y1 = p:getFrontBB()
+    --rect(x0, y0, x1, y1,1)
+
+    x0, y0, x1, y1 = p:getFrontBufferBB()
+    rect(x0, y0, x1, y1,1)
 
     -- Draw the attack-y bits
     if p.state == "punch" then
@@ -156,6 +179,9 @@ player = {
       p.since_last_state = 0
       p.frame_index = 1
     end
+  end,
+  handle_boss_collision = function(p, collides)
+    p.blocked = collides  
   end
 }
 
@@ -257,11 +283,11 @@ function p_update_walk(p)
     p.state = "stand"
   elseif btn(0) and p.map_x > 0 then
     p.direction = 0 
-    p.map_x -= 1
+    p.map_x -= p.blocked != true and 1 or 0
     p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and -1 or 0
   elseif btn(1) and p.map_x < (map_extent - 8) then
     p.direction = 1
-    p.map_x += 1
+    p.map_x += p.blocked != true and 1 or 0
     p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
   end
 end
