@@ -132,7 +132,7 @@ function new_flower(direction, start_x)
     x = start_x,
     vx = direction == 0 and -1.2 or 1.2,
     y = 89,
-    frames_walk = {87,88,89,90},
+    frames_walk = {85,86,87,88},
     frames_threat = {67,68},
     frame_index = 1,
     frame_wait = 0.2,

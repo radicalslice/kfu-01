@@ -1,9 +1,15 @@
 levels = {
-  "200:2t1f:1;150:1f:1;100:2t1f:0"
-  -- "150:2t1f:0"
+  {
+    direction = 0,
+    batches = "200:2t1f:1;150:1f:1;100:2t1f:0",
+  },
+  {
+    direction = 1,
+    batches = "150:2t1f:0",
+  },
 }
 
-function parse_level(str)
+function parse_batches(str)
   -- sub :: String -> Int -> Int -> String
   -- start and end are inclusive
   local consumed = 1
@@ -47,4 +53,22 @@ function index_of(str, chr)
     idx += 1
   end
   return -1
+end
+
+function is_level_end(x, level_direction)
+  if level_direction == 0 and x < 8 then
+    return true
+  elseif level_direction == 1 and x > map_extent - 16 then
+    return true
+  end
+  return false
+end
+
+function should_spawn_batch(x, batch_x, level_direction)
+  if level_direction == 0 and x < batch_x then
+    return true
+  elseif level_direction == 1 and x > batch_x then
+    return true
+  end
+  return false
 end

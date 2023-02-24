@@ -12,7 +12,7 @@ player = {
   frames_cpunch = {35},
   frames_ckantic = {36},
   frames_ckick = {37},
-  reset = function(p)
+  reset = function(p, level_direction)
     p.frames_current = p.frames_stand  
     p.frame_index = 1
     p.state = "stand"
@@ -22,8 +22,8 @@ player = {
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = 96
     p.draw_y = 80
-    p.direction = 0
-    p.map_x = map_extent - 16
+    p.direction = level_direction
+    p.map_x = level_direction == 0 and map_extent - 16 or 16
     p.vx = 0
     p.hugged_by_count = 0
   end,
@@ -262,7 +262,7 @@ function p_update_walk(p)
   elseif btn(1) and p.map_x < (map_extent - 8) then
     p.direction = 1
     p.map_x += 1
-    p.vx = player.draw_x == 65 and 1 or 0
+    p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
   end
 end
 
