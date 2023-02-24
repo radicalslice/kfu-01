@@ -6,17 +6,30 @@ __lua__
 #include baddie.lua
 #include level.lua
 
-extent = 0
-batches = {}
+extent = 0 -- debugging; used for tracking max x extent of player attacks
+batches = nil
+level_index = 1
+__update = nil
+__draw = nil
 function _init()
   last_ts = 0
   player:reset()
   -- spawn :: Num -> (tree || flower) -> Direction -> Void
   -- bmgr:spawn({"flower", "flower", "flower"}, 1)
-  batches = parse_level(levels[1])
+  batches = parse_level(levels[level_index])
+  __update = game_update
+  __draw = game_draw
+end
+
+function _draw()
+  __draw()
 end
 
 function _update()
+  __update()
+end
+
+function game_update()
   local now = time()
   local dt = now - last_ts
   player:update(dt)
@@ -41,9 +54,34 @@ function _update()
   end)
 
   last_ts = now
+
+  -- handle player death
+  if player.health <= 0 then
+    player:reset()
+    bmgr:reset()
+    batches = parse_level(levels[level_index])
+  end
+
+
+  -- check if player has reached end of level
+  if player.map_x <= 0 then
+    level_index += 1
+    if level_index > #levels then -- display victory msg
+      __update = victory_update
+      __draw = victory_draw
+    end
+  end
 end
 
-function _draw()
+function victory_draw()
+  cls()
+  print("victory", 40, 64, 7)
+end
+
+function victory_update()
+end
+
+function game_draw()
   cls()
   palt(0, false)
   rectfill(0,0,128,128,12)
@@ -63,7 +101,7 @@ function _draw()
   bmgr:draw()
   extent = player:draw(extent)
 
-  line(extent,0,extent,128,14)
+  -- line(extent,0,extent,128,14)
   print("map_x: ".. player.map_x, 64,4,0)
   -- print("batches: ".. #batches, 64,12,0)
   print("draw_x: ".. player.draw_x, 64,12,0)

@@ -1,6 +1,10 @@
 bmgr = {
   baddies = {},
 
+  reset = function(bm)
+    bm.baddies = {}
+  end,
+
   update = function(bm,dt,vx)
     foreach(bm.baddies, function(b) b:update(dt,vx) end)
   end,

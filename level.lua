@@ -1,5 +1,6 @@
 levels = {
   "200:2t1f:1;150:1f:1;100:2t1f:0"
+  -- "150:2t1f:0"
 }
 
 function parse_level(str)
