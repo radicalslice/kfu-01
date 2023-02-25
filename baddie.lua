@@ -64,6 +64,8 @@ bmgr = {
       -- change boss state, that should trigger the boss to walk backwards
       bm.boss.state = "walk"
       bm.boss.state_t = 1
+      bm.boss.frames_current = bm.boss.frames_walk
+      bm.boss.frame_index = 1
       bm.boss.since_last_state = 0
       bm.boss.vx = (bm.boss.direction == 0) and 1 or -1
     end
@@ -252,26 +254,37 @@ function new_boss(direction, start_x)
     y = 80,
     health = 3,
     state = "wait",
+    state_t = 1,
+    since_last_state = 0,
     invincible = 0,
+    frames_wait = {73},
     frames_walk = {73,75},
     frames_upantic = {77},
     frames_downantic = {107},
     frames_upthrow = {105},
     frames_downthrow = {109},
     frame_index = 1,
-    frame_wait = 0.5,
+    frame_wait = 0.1,
     since_last_frame = 0,
     frames_current = nil,
     update = function(b,dt,vx)
-      -- do nothing!
+
       if b.invincible > 0 then
         b.invincible = max(0, b.invincible - dt)
       end
 
       if b.state == "walk" then
         b:update_walk(dt)
+      elseif b.state == "wait" then
+        b:update_wait(dt)
+      elseif b.state == "upantic" then
+        b:update_upantic(dt)
+      elseif b.state == "upthrow" then
+        b:update_upthrow(dt)
       end
 
+      -- do nothing!
+      b.since_last_frame += dt
       if b.since_last_frame > b.frame_wait then
         b.frame_index += 1
         b.since_last_frame = 0
@@ -296,16 +309,44 @@ function new_boss(direction, start_x)
     getBB = function(b)
         return b.x,b.y,b.x+16,b.y+16
     end,
-    update_wait = function(b) end,
+    update_wait = function(b, dt)
+      b.since_last_state += dt
+      if b.since_last_state > b.state_t then
+        b.state = "upantic"
+        b.since_last_state = 0
+        b.frames_current = b.frames_upantic
+        b.frame_index = 1
+      end
+    end,
+    update_upantic = function(b, dt)
+      b.since_last_state += dt
+      if b.since_last_state > b.state_t then
+        b.state = "upthrow"
+        b.since_last_state = 0
+        b.frames_current = b.frames_upthrow
+        b.frame_index = 1
+      end
+    end,
+    update_upthrow = function(b, dt)
+      b.since_last_state += dt
+      if b.since_last_state > 1 then
+        b.state = "wait"
+        b.since_last_state = 0
+        b.frames_current = b.frames_wait
+        b.frame_index = 1
+      end
+    end,
     update_walk = function(b, dt)
       b.since_last_state += dt
       b.x += b.vx 
 
       if b.since_last_state > b.state_t then
         b.state = "wait"
+        b.frames_current = b.frames_wait
+        b.frame_index = 1
       end
     end,
   }
-  boss.frames_current = boss.frames_walk
+  boss.frames_current = boss.frames_wait
   return boss
 end
