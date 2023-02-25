@@ -1,5 +1,6 @@
 bmgr = {
   baddies = {},
+  projectiles = {},
   boss = nil,
 
   reset = function(bm)
@@ -11,6 +12,14 @@ bmgr = {
     if bm.boss != nil then
       bm.boss:update(dt)
     end
+    foreach(bm.projectiles, function(p)
+      p:update(dt,vx)
+      if p.x > 140 or p.x < -12 then
+        del(p.projectiles, p)
+      end
+    end)
+
+
   end,
 
   draw = function(bm)
@@ -18,6 +27,7 @@ bmgr = {
     if bm.boss != nil then
       bm.boss:draw()
     end
+    foreach(bm.projectiles, function(p) p:draw() end)
   end,
 
   -- return number of colliding baddies
@@ -70,11 +80,28 @@ bmgr = {
       bm.boss.vx = (bm.boss.direction == 0) and 1 or -1
     end
   end,
+  player_projectile_collision = function(bm,px0,py0,px1,py1)
+    local count = 0
+    foreach(bm.projectiles, function(p) 
+      local bx0,by0,bx1,by1 = p:getBB()
+      if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
+        del(bm.projectiles,p)
+        count += 1
+      end
+    end)
+    return count
+  end,
   combat_collision = function(bm,px0,py0,px1,py1)
     foreach(bm.baddies, function(b) 
       local bx0,by0,bx1,by1 = b:getBB()
       if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
         del(bm.baddies, b)
+      end
+    end)
+    foreach(bm.projectiles, function(p) 
+      local bx0,by0,bx1,by1 = p:getBB()
+      if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
+        del(bm.projectiles, p)
       end
     end)
   end,
@@ -110,8 +137,8 @@ bmgr = {
         baddie = new_tree(direction, start_x)
       elseif btype == "flower" then
         baddie = new_flower(direction, start_x)
-        else
-          printh("unkown baddie type: "..btype)
+      else
+        printh("unkown baddie type: "..btype)
       end
       add(bm.baddies, baddie)
       start_x = start_x + (direction == 0 and 10 or -10)
@@ -246,6 +273,58 @@ function new_flower(direction, start_x)
   return baddie
 end
 
+function new_projectile(direction, start_x)
+  local projectile = {
+    direction = direction,
+    x = start_x,
+    vx = direction == 0 and -1.8 or 1.8,
+    y = 79,
+    state_t = 1,
+    since_last_state = 0,
+    frames_default = {97,98,99,100},
+    frame_index = 1,
+    frame_wait = 0.05,
+    since_last_frame = 0,
+    frames_current = nil,
+    update = function(p,dt,vx)
+      if p.state == "default" then
+        p:update_default(dt)
+      end
+
+      p.x += p.vx
+
+      p.since_last_frame += dt
+      if p.since_last_frame > p.frame_wait then
+        p.frame_index += 1
+        p.since_last_frame = 0
+        if p.frame_index > #p.frames_current then
+          p.frame_index = 1
+        end
+      end
+    end,
+    draw = function(p)
+      local face_left = p.direction == 0
+      palt(0, false)
+      palt(15, true)
+      spr(p.frames_current[p.frame_index],face_left and p.x or p.x,p.y,1,1,(face_left and true or false),false)
+      -- draw bounding box
+      local x0, y0, x1, y1 = p:getBB()
+      rect(x0, y0, x1, y1,13)
+      pal()
+    end,
+    getBB = function(p)
+      return p.x,p.y,p.x+8,p.y+8
+    end,
+    update_default = function(p, dt)
+      p.since_last_state += dt
+      p.x += p.vx
+    end,
+  }
+  projectile.frames_current = projectile.frames_default
+  return projectile
+
+end
+
 function new_boss(direction, start_x)
   local boss = {
     direction = direction,
@@ -325,6 +404,7 @@ function new_boss(direction, start_x)
         b.since_last_state = 0
         b.frames_current = b.frames_upthrow
         b.frame_index = 1
+        add(bmgr.projectiles, new_projectile(b.direction, b.x))
       end
     end,
     update_upthrow = function(b, dt)

@@ -146,7 +146,7 @@ player = {
     --rect(x0, y0, x1, y1,1)
 
     x0, y0, x1, y1 = p:getFrontBufferBB()
-    rect(x0, y0, x1, y1,1)
+    -- rect(x0, y0, x1, y1,1)
 
     -- Draw the attack-y bits
     if p.state == "punch" then
@@ -164,11 +164,10 @@ player = {
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then
-      -- rect(x2, y2, x3, y3,14)
+      rect(x2, y2, x3, y3,14)
       -- last_extent = face_right and x3 or x2
     end
     pal()
-    -- printh(p.state)
     return last_extent
   end,
   handle_hug = function(p, current_huggers)
@@ -182,7 +181,10 @@ player = {
   end,
   handle_boss_collision = function(p, collides)
     p.blocked = collides  
-  end
+  end,
+  deduct_health = function(p, amount)
+    p.health = max(0, p.health - amount)
+  end,
 }
 
 function p_update_hugged(p, dt)
@@ -191,7 +193,7 @@ function p_update_hugged(p, dt)
     return
   end
 
-  p.health -= max(0, ceil(dt * p.hugged_by_count * 10))
+  p:deduct_health(ceil(dt * p.hugged_by_count * 10))
 
   if p.hugged_by_count == 0 then
     p.state = "stand"
