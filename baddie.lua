@@ -72,12 +72,16 @@ bmgr = {
     local bx0,by0,bx1,by1 = bm.boss:getBB()
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- change boss state, that should trigger the boss to walk backwards
-      bm.boss.state = "walk"
-      bm.boss.state_t = 1
-      bm.boss.frames_current = bm.boss.frames_walk
-      bm.boss.frame_index = 1
-      bm.boss.since_last_state = 0
-      bm.boss.vx = (bm.boss.direction == 0) and 1 or -1
+      local should_back_up = rnd()
+      local dist_to_edge = abs(bm.boss.x - (bm.boss.direction == 0 and 112 or 0))
+      if should_back_up > 0.92 and dist_to_edge >= 16 then
+        bm.boss.state = "walk"
+        bm.boss.state_t = 0.5
+        bm.boss.frames_current = bm.boss.frames_walk
+        bm.boss.frame_index = 1
+        bm.boss.since_last_state = 0
+        bm.boss.vx = (bm.boss.direction == 0) and 1 or -1
+      end
     end
   end,
   player_projectile_collision = function(bm,px0,py0,px1,py1)
@@ -273,12 +277,12 @@ function new_flower(direction, start_x)
   return baddie
 end
 
-function new_projectile(direction, start_x)
+function new_projectile(direction, start_x, start_y)
   local projectile = {
     direction = direction,
     x = start_x,
     vx = direction == 0 and -1.8 or 1.8,
-    y = 79,
+    y = start_y,
     state_t = 1,
     since_last_state = 0,
     frames_default = {97,98,99,100},
@@ -309,11 +313,11 @@ function new_projectile(direction, start_x)
       spr(p.frames_current[p.frame_index],face_left and p.x or p.x,p.y,1,1,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = p:getBB()
-      rect(x0, y0, x1, y1,13)
+      -- rect(x0, y0, x1, y1,13)
       pal()
     end,
     getBB = function(p)
-      return p.x,p.y,p.x+8,p.y+8
+      return p.x+2,p.y+2,p.x+6,p.y+6
     end,
     update_default = function(p, dt)
       p.since_last_state += dt
@@ -360,6 +364,10 @@ function new_boss(direction, start_x)
         b:update_upantic(dt)
       elseif b.state == "upthrow" then
         b:update_upthrow(dt)
+      elseif b.state == "downantic" then
+        b:update_downantic(dt)
+      elseif b.state == "downthrow" then
+        b:update_downthrow(dt)
       end
 
       -- do nothing!
@@ -391,10 +399,19 @@ function new_boss(direction, start_x)
     update_wait = function(b, dt)
       b.since_last_state += dt
       if b.since_last_state > b.state_t then
-        b.state = "upantic"
-        b.since_last_state = 0
-        b.frames_current = b.frames_upantic
-        b.frame_index = 1
+        local chance_to_throw = rnd()
+        if chance_to_throw > 0.3 then
+          local up_or_down = rnd()
+          if up_or_down > 0.5 then
+            b.state = "upantic"
+            b.frames_current = b.frames_upantic
+          else
+            b.state = "downantic"
+            b.frames_current = b.frames_downantic
+          end
+          b.since_last_state = 0
+          b.frame_index = 1
+        end
       end
     end,
     update_upantic = function(b, dt)
@@ -404,10 +421,29 @@ function new_boss(direction, start_x)
         b.since_last_state = 0
         b.frames_current = b.frames_upthrow
         b.frame_index = 1
-        add(bmgr.projectiles, new_projectile(b.direction, b.x))
+        add(bmgr.projectiles, new_projectile(b.direction, b.x, 82))
       end
     end,
     update_upthrow = function(b, dt)
+      b.since_last_state += dt
+      if b.since_last_state > 1 then
+        b.state = "wait"
+        b.since_last_state = 0
+        b.frames_current = b.frames_wait
+        b.frame_index = 1
+      end
+    end,
+    update_downantic = function(b, dt)
+      b.since_last_state += dt
+      if b.since_last_state > b.state_t then
+        b.state = "downthrow"
+        b.since_last_state = 0
+        b.frames_current = b.frames_downthrow
+        b.frame_index = 1
+        add(bmgr.projectiles, new_projectile(b.direction, b.x, 88))
+      end
+    end,
+    update_downthrow = function(b, dt)
       b.since_last_state += dt
       if b.since_last_state > 1 then
         b.state = "wait"

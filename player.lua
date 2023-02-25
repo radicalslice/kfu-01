@@ -150,7 +150,7 @@ player = {
 
     -- Draw the attack-y bits
     if p.state == "punch" then
-      spr(21, face_right and p.draw_x + 8 or p.draw_x - 2, p.draw_y + 8)
+      spr(21, face_right and p.draw_x + 8 or p.draw_x - 2, p.draw_y + 7)
     elseif p.state == "kantic" then
       spr(23,face_right and p.draw_x + 2 or p.draw_x - 2,p.draw_y + 8,1,1,face_right and true or false)
     elseif p.state == "kick" then
@@ -164,7 +164,7 @@ player = {
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then
-      rect(x2, y2, x3, y3,14)
+      -- rect(x2, y2, x3, y3,14)
       -- last_extent = face_right and x3 or x2
     end
     pal()
