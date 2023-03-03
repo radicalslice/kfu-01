@@ -5,6 +5,7 @@ bmgr = {
 
   reset = function(bm)
     bm.baddies = {}
+    bm.boss = nil
   end,
 
   update = function(bm,dt,vx)
@@ -69,6 +70,10 @@ bmgr = {
     return false
   end,
   player_boss_buffer_collision = function(bm,px0,py0,px1,py1)
+    if bm.boss == nil then
+      return false
+    end
+
     local bx0,by0,bx1,by1 = bm.boss:getBB()
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- change boss state, that should trigger the boss to walk backwards
@@ -354,6 +359,8 @@ function new_boss(direction, start_x)
 
       if b.invincible > 0 then
         b.invincible = max(0, b.invincible - dt)
+      else
+        b.invincible = 0
       end
 
       if b.state == "walk" then

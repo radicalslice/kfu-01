@@ -21,7 +21,6 @@ function _init()
   -- bmgr:spawn({"flower", "flower", "flower"}, 1)
   level.batches = parse_batches(levels[level_index].batches)
   level.direction = levels[level_index].direction
-  bmgr:spawn_boss(1, 64)
   player:reset(level.direction)
   __update = game_update
   __draw = game_draw
@@ -74,12 +73,16 @@ function game_update()
     end
   end)
 
+  if should_spawn_batch(player.map_x, level.boss, level.direction) then
+    bmgr:spawn_boss(level.direction, level.boss)
+  end
   last_ts = now
 
   -- handle player death
   if player.health <= 0 then
     level.batches = parse_batches(levels[level_index].batches)
     level.direction = levels[level_index].direction
+    level.boss = levels[level_index].boss
     player:reset(level.direction)
     bmgr:reset()
   end
@@ -113,24 +116,17 @@ function game_draw()
   palt(0, false)
   rectfill(0,0,128,128,12)
   rectfill(0,0,128,32,6)
-  --rectfill(0,94,128,108,3)
-  -- map(0,14,0,96)
   if player.map_x > 64 and player.map_x < map_extent - 64 then
     for i=0,1 do
       map(0,14,i*128-player.map_x%128,96,16,16)
-      -- map(0,14,128 - (player.map_x % 128),96)
-      -- map(0,14,player.map_x % 128,96)
     end
   else
     map(0,14,0,96,16,16)
   end
-  -- map(0,14,0,96)
   bmgr:draw()
   extent = player:draw(extent)
 
-  -- line(extent,0,extent,128,14)
   print("map_x: ".. player.map_x, 64,4,0)
-  -- print("batches: ".. #batches, 64,12,0)
   print("draw_x: ".. player.draw_x, 64,12,0)
   print("health: "..player.health, 4, 2, 3)
   print("p: ", 4, 9, 2)
@@ -155,34 +151,6 @@ function collides(x0, y0, x1, y1, x2, y2, x3, y3)
 
   return false
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 __gfx__
 00000000f444444ffffffffffffffffff444444fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff4444444f4444444fffffffff

@@ -143,7 +143,7 @@ player = {
 
     -- Find the front collision box
     x0, y0, x1, y1 = p:getFrontBB()
-    --rect(x0, y0, x1, y1,1)
+    -- rect(x0, y0, x1, y1,1)
 
     x0, y0, x1, y1 = p:getFrontBufferBB()
     -- rect(x0, y0, x1, y1,1)
