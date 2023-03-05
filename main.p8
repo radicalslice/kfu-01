@@ -21,6 +21,7 @@ function _init()
   -- bmgr:spawn({"flower", "flower", "flower"}, 1)
   level.batches = parse_batches(levels[level_index].batches)
   level.direction = levels[level_index].direction
+  level.boss = levels[level_index].boss
   player:reset(level.direction)
   __update = game_update
   __draw = game_draw
@@ -73,8 +74,13 @@ function game_update()
     end
   end)
 
-  if should_spawn_batch(player.map_x, level.boss, level.direction) then
-    bmgr:spawn_boss(level.direction, level.boss)
+  -- check if we should spawn boss
+  if bmgr.boss == nil and should_spawn_batch(player.map_x, level.boss, level.direction) then
+    if level.direction == 0 then
+      bmgr:spawn_boss(1, 32)
+    else
+      bmgr:spawn_boss(0, 112)
+    end
   end
   last_ts = now
 
@@ -98,6 +104,7 @@ function game_update()
     -- load new level
     level.batches = parse_batches(levels[level_index].batches)
     level.direction = levels[level_index].direction
+    level.boss = levels[level_index].boss
     player:reset(level.direction)
     bmgr:reset()
   end
@@ -128,6 +135,7 @@ function game_draw()
 
   print("map_x: ".. player.map_x, 64,4,0)
   print("draw_x: ".. player.draw_x, 64,12,0)
+  print("level: ".. level_index, 64,20,0)
   print("health: "..player.health, 4, 2, 3)
   print("p: ", 4, 9, 2)
   for i=1,player.mash_count_p do

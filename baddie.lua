@@ -62,8 +62,13 @@ bmgr = {
       return false
     end
 
+    if bm.boss.state == "dead" then
+      return false
+    end
+
     local bx0,by0,bx1,by1 = bm.boss:getBB()
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
+      printh("Oh no player collision!")
       return true
     end
 
@@ -79,7 +84,7 @@ bmgr = {
       -- change boss state, that should trigger the boss to walk backwards
       local should_back_up = rnd()
       local dist_to_edge = abs(bm.boss.x - (bm.boss.direction == 0 and 112 or 0))
-      if should_back_up > 0.92 and dist_to_edge >= 16 then
+      if should_back_up > 0.92 and dist_to_edge >= 24 then
         bm.boss.state = "walk"
         bm.boss.state_t = 0.5
         bm.boss.frames_current = bm.boss.frames_walk
@@ -118,6 +123,8 @@ bmgr = {
   boss_combat_collision = function(bm,px0,py0,px1,py1)
     if bm.boss == nil then
       return
+    elseif bm.boss.state == "dead" then
+      return
     elseif bm.boss.invincible > 0 then
       return
     end
@@ -127,13 +134,14 @@ bmgr = {
       -- knock boss backwards / deduct health
       bm.boss.health -= 1
       bm.boss.invincible = 1
-      if bm.boss.direction == 1 then
+      if bm.boss.direction == 1 and bm.boss.x > 24 then
         bm.boss.x -= 5
-      else
+        -- local dist_to_edge = abs(bm.boss.x - (bm.boss.direction == 0 and 112 or 0))
+      elseif bm.boss.direction == 0 and bm.boss.x < 104 then
         bm.boss.x += 5
       end
       if bm.boss.health <= 0 then
-        bm.boss = nil
+        bm.boss.state = "dead"
       end
     end
   end,
@@ -355,7 +363,7 @@ function new_boss(direction, start_x)
     frame_wait = 0.1,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt,vx)
+    update = function(b,dt)
 
       if b.invincible > 0 then
         b.invincible = max(0, b.invincible - dt)
@@ -366,6 +374,7 @@ function new_boss(direction, start_x)
       if b.state == "walk" then
         b:update_walk(dt)
       elseif b.state == "wait" then
+
         b:update_wait(dt)
       elseif b.state == "upantic" then
         b:update_upantic(dt)
@@ -375,6 +384,8 @@ function new_boss(direction, start_x)
         b:update_downantic(dt)
       elseif b.state == "downthrow" then
         b:update_downthrow(dt)
+      elseif b.state == "dead" then
+        return
       end
 
       -- do nothing!
@@ -388,6 +399,10 @@ function new_boss(direction, start_x)
       end
     end,
     draw = function(b)
+      if b.state == "dead" then
+        return
+      end
+
       if b.invincible > 0 and flr(b.invincible * 100) % 2 > 0 then
         return
       end
