@@ -203,6 +203,12 @@ function p_update_hugged(p, dt)
     return
   end
 
+  if btn(0) then
+    p.direction = 0
+  elseif btn(1) then
+    p.direction = 1
+  end
+
   if btn(3) and p.frames_current == p.frames_stand then
     p.draw_y += 3
     p.frames_current = p.frames_crouch
