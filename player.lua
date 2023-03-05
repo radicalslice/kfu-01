@@ -255,7 +255,7 @@ function p_update_stand(p)
 
     if btn(5) then
       p.state = "kantic"
-      p.state_t = 0.1
+      p.state_t = 0.15
       p.frames_current = p.frames_kantic
       p.since_last_state = 0
       return
@@ -300,7 +300,7 @@ function p_update_pantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "punch"
       p.since_last_state = 0
-      p.state_t = 0.1
+      p.state_t = 0.15
       p.frames_current = p.frames_punch
     end
 end
@@ -311,7 +311,7 @@ function p_update_kantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "kick"
       p.since_last_state = 0
-      p.state_t = 0.10
+      p.state_t = 0.2
       p.frames_current = p.frames_kick
     end
 end
@@ -347,7 +347,7 @@ function p_update_crouch(p, dt)
     end
     if btn(5) then
       p.state = "ckantic"
-      p.state_t = 0.1
+      p.state_t = 0.15
       p.frames_current = p.frames_ckantic
       p.since_last_state = 0
     end
@@ -365,7 +365,7 @@ function p_update_cpantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "cpunch"
       p.since_last_state = 0
-      p.state_t = 0.1
+      p.state_t = 0.15
       p.frames_current = p.frames_cpunch
     end
 end
@@ -376,7 +376,7 @@ function p_update_ckantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "ckick"
       p.since_last_state = 0
-      p.state_t = 0.1
+      p.state_t = 0.2
       p.frames_current = p.frames_ckick
     end
 end

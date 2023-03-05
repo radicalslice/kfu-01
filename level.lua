@@ -7,7 +7,7 @@ levels = {
   {
     direction = 1,
     batches = "150:2t1f:0",
-    boss = 232
+    boss = 200
   },
 }
 

@@ -83,7 +83,7 @@ bmgr = {
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- change boss state, that should trigger the boss to walk backwards
       local should_back_up = rnd()
-      local dist_to_edge = abs(bm.boss.x - (bm.boss.direction == 0 and 112 or 0))
+      local dist_to_edge = abs(bm.boss:getDrawX() - (bm.boss.direction == 0 and 112 or 0))
       if should_back_up > 0.92 and dist_to_edge >= 24 then
         bm.boss.state = "walk"
         bm.boss.state_t = 0.5
@@ -200,7 +200,7 @@ function new_tree(direction, start_x)
       local face_left = b.direction == 0
       palt(0, false)
       palt(15, true)
-      spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,1,2,(face_left and true or false),false)
+      spr(b.frames_current[b.frame_index],b.x,b.y,1,2,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB()
       -- rect(x0, y0, x1, y1,13)
@@ -409,14 +409,21 @@ function new_boss(direction, start_x)
       local face_left = b.direction == 0
       palt(0, false)
       palt(15, true)
-      spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,2,2,(face_left and true or false),false)
+      spr(b.frames_current[b.frame_index],b:getDrawX(),b.y,2,2,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB()
       -- rect(x0, y0, x1, y1,13)
       pal()
     end,
+    getDrawX = function(b)
+      if b.direction == 1 then
+        return b.x - max(0, player.map_x - 64)
+      else
+        return b.x - player.map_x + 64 + max(0, player.map_x - (map_extent - 64))
+      end
+    end,
     getBB = function(b)
-        return b.x,b.y,b.x+16,b.y+16
+        return b:getDrawX(),b.y,b:getDrawX()+16,b.y+16
     end,
     update_wait = function(b, dt)
       b.since_last_state += dt
@@ -443,7 +450,7 @@ function new_boss(direction, start_x)
         b.since_last_state = 0
         b.frames_current = b.frames_upthrow
         b.frame_index = 1
-        add(bmgr.projectiles, new_projectile(b.direction, b.x, 82))
+        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(), 82))
       end
     end,
     update_upthrow = function(b, dt)
@@ -462,7 +469,7 @@ function new_boss(direction, start_x)
         b.since_last_state = 0
         b.frames_current = b.frames_downthrow
         b.frame_index = 1
-        add(bmgr.projectiles, new_projectile(b.direction, b.x, 88))
+        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(), 88))
       end
     end,
     update_downthrow = function(b, dt)
