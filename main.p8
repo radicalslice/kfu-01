@@ -39,7 +39,7 @@ function game_update()
   local now = time()
   local dt = now - last_ts
   player:update(dt)
-  bmgr:update(dt, player.vx)
+  bmgr:update(dt, player.vx,player.map_x)
 
   local px0, py0, px1, py1 = player:getBB()
   local current_huggers = bmgr:player_collision(px0,py0,px1,py1)
@@ -51,18 +51,18 @@ function game_update()
   end
 
   px0, py0, px1, py1 = player:getFrontBB()
-  local boss_collide = bmgr:player_boss_collision(px0,py0,px1,py1)
+  local boss_collide = bmgr:player_boss_collision(px0,py0,px1,py1,player.map_x)
   player:handle_boss_collision(boss_collide)
 
   px0, py0, px1, py1 = player:getFrontBufferBB()
-  bmgr:player_boss_buffer_collision(px0,py0,px1,py1)
+  bmgr:player_boss_buffer_collision(px0,py0,px1,py1,player.map_x)
 
   player:handle_hug(current_huggers)
 
   local checkme,px0,py0,px1,py1 = player:getAtkBB()
   if checkme then
     bmgr:combat_collision(px0,py0,px1,py1)
-    bmgr:boss_combat_collision(px0,py0,px1,py1)
+    bmgr:boss_combat_collision(px0,py0,px1,py1,player.map_x)
   end
 
 
@@ -130,11 +130,10 @@ function game_draw()
   else
     map(0,14,0,96,16,16)
   end
-  bmgr:draw()
+  bmgr:draw(player.map_x)
   extent = player:draw(extent)
 
-  print("map_x: ".. player.map_x, 64,4,0)
-  print("draw_x: ".. player.draw_x, 64,12,0)
+  print("freeze: " .. (player.freeze_input and "y" or "n"),64,4,0)
   print("level: ".. level_index, 64,20,0)
   print("health: "..player.health, 4, 2, 3)
   print("p: ", 4, 9, 2)
@@ -193,14 +192,14 @@ __gfx__
 00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-00000000333ff333333ff333333ff333333ff333fffffffffffffffffffffffffffffffffff333fb333b33fffff3f3b3f3b33ffffff333fb333b33ffffffffff
-00000000333b33b3333b33b3333b33b3333b33b3fffffffffffffffffffffffffffffffff333bbb3383333fff33b3333333bb3fff333bbb3383333ffffffffff
-000000003f3333333f3333333f3333333f333333ffffffffffffffffffffffffffffffff33b3b3b33f3bb3ff3b3b33f3f83333ff33b3b3b33f3bb3ffffffffff
-00000000f3b3b343f3b3b343f3b3b343f3b3b343ffffffffffffffffffffffffffffffff3b3bb8bb3bb3b33f333338b3bb33333f3b3bb8bb3bb3b33fffffffff
-00000000f3b43333f3b43333f3b43333f3b43333ffffffffffffffffffffffffffffffff3bbbbb3333bbbb3f3fb33333b333b33f3bbbbb3333bbbb3fffffffff
-00000000334333f3334333f33043330333033303ffffffffffffffffffffffffffffffff3b8333333b83b3f3b33b3f3b383333ff3b8333333b83b3f3ffffffff
-00000000b3b443f3b3b443f3b30440f3b3b040f3ffffffffffffffffffffffffffffffff333bf33f443333333b83333b44bb3b33333bf33f44333333ffffffff
-00000000f377773ff377773ff377773ff377773ffffffffffffffffffffffffffffffffff33b343444bb3833f3383434443fb383f33b343444bb3833ffffffff
+00000000333ff333333ff333333ff333333ff333ffff6ffff6f6ff6ff6ff6f6ffffffffffff333fb333b33fffff3f3b3f3b33ffffff333fb333b33ffffffffff
+00000000333b33b3333b33b3333b33b3333b33b36f6666ffff6666f6ff6666fffffffffff333bbb3383333fff33b3333333bb3fff333bbb3383333ffffffffff
+000000003f3333333f3333333f3333333f333333f6507766f677776f66777506ffffffff33b3b3b33f3bb3ff3b3b33f3f83333ff33b3b3b33f3bb3ffffffffff
+00000000f3b3b343f3b3b343f3b3b343f3b3b3436655776ff655755ff677755fffffffff3b3bb8bb3bb3b33f333338b3bb33333f3b3bb8bb3bb3b33fffffffff
+00000000f3b43333f3b43333f3b43333f3b43333f677755f6650750ff6557766ffffffff3bbbbb3333bbbb3f3fb33333b333b33f3bbbbb3333bbbb3fffffffff
+00000000334333f3334333f33043330333033303f677750ff677776ff650776fffffffff3b8333333b83b3f3b33b3f3b383333ff3b8333333b83b3f3ffffffff
+00000000b3b443f3b3b443f3b30440f3b3b040f3ff6666f66f6666ffff6666f6ffffffff333bf33f443333333b83333b44bb3b33333bf33f44333333ffffffff
+00000000f377773ff377773ff377773ff377773ff6ff6f6ffff6ff6ffff6f6fffffffffff33b343444bb3833f3383434443fb383f33b343444bb3833ffffffff
 00000000ff7070ffff7070ffff7070ffff7070ffffffffffffffffffffffffffffffffff3338774477b3333f3bf377447733333f3998007700b3333fffffffff
 00000000ff7040ffff7040ff9f7040f9ff7040ffffffffffffaaaaffffaaaaffffaaaaff3337007700f3b3ff3337007700f3f3b33997007700f3b3ffffffffff
 00000000ff4444ffff4444ff9944449999444499ffaaaafffa70970ffa70970ffa70970f3ff700770099f3333ff700770099f3333f9777777799f333ffffffff

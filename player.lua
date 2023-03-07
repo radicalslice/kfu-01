@@ -27,9 +27,17 @@ player = {
     p.vx = 0
     p.hugged_by_count = 0
     p.blocked = false
+    p.freeze_input = true
   end,
   update = function(p, dt)
     p.vx = 0
+
+    -- btn() = 001000
+    ------     xoDURL
+    if btn() == 0 or btn() == 8 then
+      player.freeze_input = false
+    end
+
     if p.state == "stand" then
       p_update_stand(p, dt)
     elseif p.state == "walk" then
@@ -115,9 +123,9 @@ player = {
       end
    elseif p.state == "ckick" then
       if face_right then
-        return true,p.draw_x + 8,p.draw_y+5,p.draw_x + 12,p.draw_y+8
+        return true,p.draw_x + 8,p.draw_y+6,p.draw_x + 12,p.draw_y+9
         else
-        return true,p.draw_x - 5,p.draw_y+5,p.draw_x - 1,p.draw_y+8
+        return true,p.draw_x - 5,p.draw_y+6,p.draw_x - 1,p.draw_y+9
       end
     
 
@@ -219,8 +227,9 @@ function p_update_hugged(p, dt)
     return
   end
 
-  if btnp(4) then
+  if btnp(4) and not p.freeze_input then
     p.mash_count_p += 1
+    p.freeze_input = true
     if p.mash_count_p > p.hugged_by_count then
       if p.frames_current == p.frames_crouch then
         p.state = "cpantic"
@@ -233,8 +242,9 @@ function p_update_hugged(p, dt)
       p.mash_count_p , p.mash_count_k = 0,0
       return
     end
-  elseif btnp(5) then
+  elseif btnp(5) and not p.freeze_input then
     p.mash_count_k += 1
+    p.freeze_input = true
     if p.mash_count_k > p.hugged_by_count then
       if p.frames_current == p.frames_crouch then
         p.state = "ckantic"
@@ -251,27 +261,29 @@ function p_update_hugged(p, dt)
 end
 
 function p_update_stand(p)
-    if btn(4) then
+    if btn(4) and not p.freeze_input then
       p.state = "pantic"
       p.state_t = 0.1
       p.frames_current = p.frames_pantic
       p.since_last_state = 0
+      p.freeze_input = true
       return
     end
 
-    if btn(5) then
+    if btn(5) and not p.freeze_input then
       p.state = "kantic"
       p.state_t = 0.15
       p.frames_current = p.frames_kantic
       p.since_last_state = 0
+      p.freeze_input = true
       return
     end
 
-    if btn(0) then
+    if btn(0) and not player.freeze_input then
       p.direction = 0 
       p.frames_current = p.frames_walk
       p.state = "walk"
-    elseif btn(1) then
+    elseif btn(1) and not player.freeze_input then
       p.direction = 1
       p.frames_current = p.frames_walk
       p.state = "walk"
@@ -345,17 +357,19 @@ function p_update_kick(p, dt)
 end
 
 function p_update_crouch(p, dt)
-    if btn(4) then
+    if btn(4) and not p.freeze_input then
       p.state = "cpantic"
       p.state_t = 0.1
       p.frames_current = p.frames_cpantic
       p.since_last_state = 0
+      p.freeze_input = true
     end
-    if btn(5) then
+    if btn(5) and not p.freeze_input then
       p.state = "ckantic"
       p.state_t = 0.15
       p.frames_current = p.frames_ckantic
       p.since_last_state = 0
+      p.freeze_input = true
     end
     if not btn(3) then
       p.state = "stand"

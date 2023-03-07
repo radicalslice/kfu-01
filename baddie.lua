@@ -8,10 +8,10 @@ bmgr = {
     bm.boss = nil
   end,
 
-  update = function(bm,dt,vx)
+  update = function(bm,dt,vx,x_offset)
     foreach(bm.baddies, function(b) b:update(dt,vx) end)
     if bm.boss != nil then
-      bm.boss:update(dt)
+      bm.boss:update(dt,x_offset)
     end
     foreach(bm.projectiles, function(p)
       p:update(dt,vx)
@@ -23,10 +23,10 @@ bmgr = {
 
   end,
 
-  draw = function(bm)
+  draw = function(bm, x_offset)
     foreach(bm.baddies, function(b) b:draw() end)
     if bm.boss != nil then
-      bm.boss:draw()
+      bm.boss:draw(x_offset)
     end
     foreach(bm.projectiles, function(p) p:draw() end)
   end,
@@ -57,7 +57,7 @@ bmgr = {
   end,
 
   -- return number of colliding baddies
-  player_boss_collision = function(bm,px0,py0,px1,py1)
+  player_boss_collision = function(bm,px0,py0,px1,py1,x_offset)
     if bm.boss == nil then
       return false
     end
@@ -66,24 +66,23 @@ bmgr = {
       return false
     end
 
-    local bx0,by0,bx1,by1 = bm.boss:getBB()
+    local bx0,by0,bx1,by1 = bm.boss:getBB(x_offset)
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
-      printh("Oh no player collision!")
       return true
     end
 
     return false
   end,
-  player_boss_buffer_collision = function(bm,px0,py0,px1,py1)
+  player_boss_buffer_collision = function(bm,px0,py0,px1,py1,x_offset)
     if bm.boss == nil then
       return false
     end
 
-    local bx0,by0,bx1,by1 = bm.boss:getBB()
+    local bx0,by0,bx1,by1 = bm.boss:getBB(x_offset)
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- change boss state, that should trigger the boss to walk backwards
       local should_back_up = rnd()
-      local dist_to_edge = abs(bm.boss:getDrawX() - (bm.boss.direction == 0 and 112 or 0))
+      local dist_to_edge = abs(bm.boss:getDrawX(x_offset) - (bm.boss.direction == 0 and 112 or 0))
       if should_back_up > 0.92 and dist_to_edge >= 24 then
         bm.boss.state = "walk"
         bm.boss.state_t = 0.5
@@ -120,7 +119,7 @@ bmgr = {
     end)
   end,
 
-  boss_combat_collision = function(bm,px0,py0,px1,py1)
+  boss_combat_collision = function(bm,px0,py0,px1,py1,x_offset)
     if bm.boss == nil then
       return
     elseif bm.boss.state == "dead" then
@@ -129,7 +128,7 @@ bmgr = {
       return
     end
 
-    local bx0,by0,bx1,by1 = bm.boss:getBB()
+    local bx0,by0,bx1,by1 = bm.boss:getBB(x_offset)
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- knock boss backwards / deduct health
       bm.boss.health -= 1
@@ -154,6 +153,8 @@ bmgr = {
         baddie = new_tree(direction, start_x)
       elseif btype == "flower" then
         baddie = new_flower(direction, start_x)
+      elseif btype == "wisp" then
+        baddie = new_wisp(direction, start_x)
       else
         printh("unkown baddie type: "..btype)
       end
@@ -308,7 +309,7 @@ function new_projectile(direction, start_x, start_y)
         p:update_default(dt)
       end
 
-      p.x += p.vx
+      p.x += p.vx - vx
 
       p.since_last_frame += dt
       if p.since_last_frame > p.frame_wait then
@@ -363,7 +364,7 @@ function new_boss(direction, start_x)
     frame_wait = 0.1,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt)
+    update = function(b,dt,x_offset)
 
       if b.invincible > 0 then
         b.invincible = max(0, b.invincible - dt)
@@ -377,11 +378,11 @@ function new_boss(direction, start_x)
 
         b:update_wait(dt)
       elseif b.state == "upantic" then
-        b:update_upantic(dt)
+        b:update_upantic(dt, x_offset)
       elseif b.state == "upthrow" then
         b:update_upthrow(dt)
       elseif b.state == "downantic" then
-        b:update_downantic(dt)
+        b:update_downantic(dt, x_offset)
       elseif b.state == "downthrow" then
         b:update_downthrow(dt)
       elseif b.state == "dead" then
@@ -398,7 +399,7 @@ function new_boss(direction, start_x)
         end
       end
     end,
-    draw = function(b)
+    draw = function(b, x_offset)
       if b.state == "dead" then
         return
       end
@@ -409,21 +410,21 @@ function new_boss(direction, start_x)
       local face_left = b.direction == 0
       palt(0, false)
       palt(15, true)
-      spr(b.frames_current[b.frame_index],b:getDrawX(),b.y,2,2,(face_left and true or false),false)
+      spr(b.frames_current[b.frame_index],b:getDrawX(x_offset),b.y,2,2,(face_left and true or false),false)
       -- draw bounding box
-      local x0, y0, x1, y1 = b:getBB()
-      -- rect(x0, y0, x1, y1,13)
+      local x0, y0, x1, y1 = b:getBB(x_offset)
+      rect(x0, y0, x1, y1,13)
       pal()
     end,
-    getDrawX = function(b)
+    getDrawX = function(b, x_offset)
       if b.direction == 1 then
-        return b.x - max(0, player.map_x - 64)
+        return b.x - max(0, x_offset - 64)
       else
-        return b.x - player.map_x + 64 + max(0, player.map_x - (map_extent - 64))
+        return b.x - x_offset + 64 + max(0, x_offset - (map_extent - 64))
       end
     end,
-    getBB = function(b)
-        return b:getDrawX(),b.y,b:getDrawX()+16,b.y+16
+    getBB = function(b, x_offset)
+        return b:getDrawX(x_offset),b.y,b:getDrawX(x_offset)+16,b.y+16
     end,
     update_wait = function(b, dt)
       b.since_last_state += dt
@@ -443,14 +444,14 @@ function new_boss(direction, start_x)
         end
       end
     end,
-    update_upantic = function(b, dt)
+    update_upantic = function(b, dt, x_antic)
       b.since_last_state += dt
       if b.since_last_state > b.state_t then
         b.state = "upthrow"
         b.since_last_state = 0
         b.frames_current = b.frames_upthrow
         b.frame_index = 1
-        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(), 82))
+        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_antic), 82))
       end
     end,
     update_upthrow = function(b, dt)
@@ -462,14 +463,14 @@ function new_boss(direction, start_x)
         b.frame_index = 1
       end
     end,
-    update_downantic = function(b, dt)
+    update_downantic = function(b, dt, x_offset)
       b.since_last_state += dt
       if b.since_last_state > b.state_t then
         b.state = "downthrow"
         b.since_last_state = 0
         b.frames_current = b.frames_downthrow
         b.frame_index = 1
-        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(), 88))
+        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_offset), 88))
       end
     end,
     update_downthrow = function(b, dt)
@@ -494,4 +495,64 @@ function new_boss(direction, start_x)
   }
   boss.frames_current = boss.frames_wait
   return boss
+end
+
+function new_wisp(direction, start_x)
+  local baddie = {
+    direction = direction,
+    x = start_x,
+    vx = direction == 0 and -1.2 or 1.2,
+    y = 81,
+    frames_walk = {69,70,71},
+    frame_index = 1,
+    frame_wait = 0.1,
+    since_last_frame = 0,
+    frames_current = nil,
+    update = function(b,dt,vx)
+      if b.state == "hug" then
+        return
+      end
+
+      b.x += b.vx - vx
+      b.since_last_frame += dt
+
+      if b.since_last_frame > b.frame_wait then
+        b.frame_index += 1
+        b.since_last_frame = 0
+        if b.frame_index > #b.frames_current then
+          b.frame_index = 1
+        end
+      end
+    end,
+    draw = function(b)
+      local face_left = b.direction == 0
+      palt(0, false)
+      palt(15, true)
+      spr(b.frames_current[b.frame_index],b.x,b.y,1,1,(face_left and true or false),false)
+      -- draw bounding box
+      local x0, y0, x1, y1 = b:getBB()
+      -- rect(x0, y0, x1, y1,13)
+      local x0, y0, x1, y1 = b:getFrontBB()
+      -- rect(x0, y0, x1, y1,8)
+      pal()
+    end,
+    getBB = function(b)
+      local face_left = b.direction == 0
+      if face_left then
+        return b.x-1,b.y,b.x+7,b.y+8
+      else
+        return b.x,b.y,b.x+8,b.y+8
+      end
+    end,
+    getFrontBB = function(b)
+      local face_left = b.direction == 0
+      if face_left then
+        return b.x - 1,b.y+5,b.x+3,b.y+8
+      else
+        return b.x + 4,b.y+5,b.x+8,b.y+8
+      end
+    end,
+  }
+  baddie.frames_current = baddie.frames_walk
+  return baddie
 end

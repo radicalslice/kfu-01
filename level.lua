@@ -1,7 +1,7 @@
 levels = {
   {
     direction = 0,
-    batches = "200:2t1f:1;150:1f:1;100:2t1f:0",
+    batches = "200:1f1w:1;150:1f:1;100:2t1f:0",
     boss = 60,
   },
   {
@@ -32,9 +32,15 @@ function parse_batches(str)
     local i = 1
     while i<#vals[2] do
       local baddie_count = tonum(sub(vals[2], i, i))
-      local baddie_type = sub(vals[2], i+1, i+1)
+      local baddie_code = sub(vals[2], i+1, i+1)
       for j=1,baddie_count do
-        add(my_batch.baddies, (baddie_type == "t") and "tree" or "flower")
+        local baddie_type = "tree"
+        if baddie_code == "f" then
+          baddie_type = "flower"
+        elseif baddie_code == "w" then
+          baddie_type = "wisp"
+        end
+        add(my_batch.baddies, baddie_type)
       end
       i += 2
     end
