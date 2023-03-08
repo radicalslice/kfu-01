@@ -267,6 +267,7 @@ function p_update_stand(p)
       p.frames_current = p.frames_pantic
       p.since_last_state = 0
       p.freeze_input = true
+      sfx(1)
       return
     end
 
@@ -276,6 +277,7 @@ function p_update_stand(p)
       p.frames_current = p.frames_kantic
       p.since_last_state = 0
       p.freeze_input = true
+      sfx(0)
       return
     end
 
@@ -363,6 +365,7 @@ function p_update_crouch(p, dt)
       p.frames_current = p.frames_cpantic
       p.since_last_state = 0
       p.freeze_input = true
+      sfx(1)
     end
     if btn(5) and not p.freeze_input then
       p.state = "ckantic"
@@ -370,6 +373,7 @@ function p_update_crouch(p, dt)
       p.frames_current = p.frames_ckantic
       p.since_last_state = 0
       p.freeze_input = true
+      sfx(0)
     end
     if not btn(3) then
       p.state = "stand"

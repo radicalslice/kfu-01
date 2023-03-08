@@ -108,12 +108,14 @@ bmgr = {
     foreach(bm.baddies, function(b) 
       local bx0,by0,bx1,by1 = b:getBB()
       if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
+        sfx(2)
         del(bm.baddies, b)
       end
     end)
     foreach(bm.projectiles, function(p) 
       local bx0,by0,bx1,by1 = p:getBB()
       if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
+        sfx(2)
         del(bm.projectiles, p)
       end
     end)
@@ -131,6 +133,7 @@ bmgr = {
     local bx0,by0,bx1,by1 = bm.boss:getBB(x_offset)
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- knock boss backwards / deduct health
+      sfx(2)
       bm.boss.health -= 1
       bm.boss.invincible = 1
       if bm.boss.direction == 1 and bm.boss.x > 24 then
@@ -159,7 +162,7 @@ bmgr = {
         printh("unkown baddie type: "..btype)
       end
       add(bm.baddies, baddie)
-      start_x = start_x + (direction == 0 and 10 or -10)
+      start_x = start_x + (direction == 0 and 16 or -16)
     end
     )
   end,
