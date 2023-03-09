@@ -1,8 +1,8 @@
 levels = {
   {
     direction = 0,
-    batches = "200:1f1w:1;150:1f:1;100:2t1f:0",
-    boss = 60,
+    batches = "200:1t:0;195:1t:1;100:2t1f:0",
+    boss = 80,
   },
   {
     direction = 1,
