@@ -1,7 +1,7 @@
-map_extent = 256
+map_extent = 512
 player = {
-  frame_wait = 0.1,
-  frames_walk = {2,4,3,4},
+  frame_wait = 0.08,
+  frames_walk = {4,3,4,2},
   frames_stand = {1},
   frames_pantic = {9},
   frames_punch = {8},

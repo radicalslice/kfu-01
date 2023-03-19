@@ -417,7 +417,7 @@ function new_boss(direction, start_x)
       spr(b.frames_current[b.frame_index],b:getDrawX(x_offset),b.y,2,2,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB(x_offset)
-      rect(x0, y0, x1, y1,13)
+      -- rect(x0, y0, x1, y1,13)
       pal()
     end,
     getDrawX = function(b, x_offset)
