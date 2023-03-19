@@ -82,8 +82,8 @@ bmgr = {
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
       -- change boss state, that should trigger the boss to walk backwards
       local should_back_up = rnd()
-      local dist_to_edge = abs(bm.boss:getDrawX(x_offset) - (bm.boss.direction == 0 and 112 or 0))
-      if should_back_up > 0.92 and dist_to_edge >= 24 then
+      local dist_to_edge = abs(bm.boss:getDrawX(x_offset) - (bm.boss.direction == 0 and 120 or 0))
+      if should_back_up > 0.92 and dist_to_edge >= 16 then
         bm.boss.state = "walk"
         bm.boss.state_t = 0.5
         bm.boss.frames_current = bm.boss.frames_walk
@@ -168,8 +168,8 @@ bmgr = {
     )
   end,
 
-  spawn_boss = function(bmgr, direction, start_x)
-    bmgr.boss = new_boss(direction, start_x)
+  spawn_boss = function(bmgr, direction, start_x, difficulty)
+    bmgr.boss = new_boss(direction, start_x, difficulty)
   end,
 }
 
@@ -177,7 +177,7 @@ function new_tree(direction, start_x)
   local baddie = {
     direction = direction,
     x = start_x,
-    vx = direction == 0 and -1.2 or 1.2,
+    vx = direction == 0 and -1.4 or 1.4,
     y = 80,
     frames_walk = {65,66},
     frames_threat = {67,68},
@@ -238,12 +238,12 @@ function new_flower(direction, start_x)
   local baddie = {
     direction = direction,
     x = start_x,
-    vx = direction == 0 and -1.2 or 1.2,
+    vx = direction == 0 and -1.4 or 1.4,
     y = 89,
     frames_walk = {85,86,87,88},
     frames_threat = {67,68},
     frame_index = 1,
-    frame_wait = 0.2,
+    frame_wait = 0.05,
     since_last_frame = 0,
     frames_current = nil,
     update = function(b,dt,vx)
@@ -347,15 +347,16 @@ function new_projectile(direction, start_x, start_y)
 
 end
 
-function new_boss(direction, start_x)
+function new_boss(direction, start_x, difficulty)
   local boss = {
     direction = direction,
     x = start_x,
-    vx = direction == 0 and -1.2 or 1.2,
+    vx = direction == 0 and -1.4 or 1.4,
     y = 80,
-    health = 3,
+    health = difficulty == 1 and 3 or 5,
+    throw_threshold = difficulty == 1 and 0.95 or 0.5,
+    state_t = difficulty == 1 and 1 or 0.5,
     state = "wait",
-    state_t = 1,
     since_last_state = 0,
     invincible = 0,
     frames_wait = {73},
@@ -379,7 +380,6 @@ function new_boss(direction, start_x)
       if b.state == "walk" then
         b:update_walk(dt)
       elseif b.state == "wait" then
-
         b:update_wait(dt)
       elseif b.state == "upantic" then
         b:update_upantic(dt, x_offset)
@@ -434,7 +434,7 @@ function new_boss(direction, start_x)
       b.since_last_state += dt
       if b.since_last_state > b.state_t then
         local chance_to_throw = rnd()
-        if chance_to_throw > 0.3 then
+        if chance_to_throw > b.throw_threshold then
           local up_or_down = rnd()
           if up_or_down > 0.5 then
             b.state = "upantic"
@@ -505,7 +505,7 @@ function new_wisp(direction, start_x)
   local baddie = {
     direction = direction,
     x = start_x,
-    vx = direction == 0 and -1.2 or 1.2,
+    vx = direction == 0 and -1.4 or 1.4,
     y = 81,
     frames_walk = {69,70,71},
     frame_index = 1,

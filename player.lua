@@ -1,4 +1,4 @@
-map_extent = 512
+map_extent = 384
 player = {
   frame_wait = 0.08,
   frames_walk = {4,3,4,2},

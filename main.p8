@@ -92,9 +92,9 @@ function game_update()
   -- check if we should spawn boss
   if bmgr.boss == nil and should_spawn_batch(player.map_x, level.boss, level.direction) then
     if level.direction == 0 then
-      bmgr:spawn_boss(1, player.map_x - 40)
+      bmgr:spawn_boss(1, player.map_x - 40, level_index)
     else
-      bmgr:spawn_boss(0, player.map_x + 32)
+      bmgr:spawn_boss(0, player.map_x + 40, level_index)
     end
   end
   last_ts = now
