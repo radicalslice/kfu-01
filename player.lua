@@ -12,6 +12,7 @@ player = {
   frames_cpunch = {35},
   frames_ckantic = {36},
   frames_ckick = {37},
+  frames_dead = {38},
   reset = function(p, level_direction)
     p.frames_current = p.frames_stand  
     p.frame_index = 1
@@ -25,17 +26,29 @@ player = {
     p.direction = level_direction
     p.map_x = level_direction == 0 and map_extent - 16 or 16
     p.vx = 0
+    p.vy = 0
     p.hugged_by_count = 0
     p.blocked = false
     p.freeze_input = true
+    p.invincible = 0
   end,
   update = function(p, dt)
-    p.vx = 0
 
     -- btn() = 001000
     ------     xoDURL
     if btn() == 0 or btn() == 8 then
       player.freeze_input = false
+    end
+
+    if p.invincible > 0 then
+      p.invincible = max(0, p.invincible - dt)
+    end
+
+    if p.health <= 0 and p.state != "dead" then
+      p.state = "dead" 
+      p.frames_current = p.frames_dead
+      p.vx = p.direction == 0 and 4 or -4
+      p.vy = -3
     end
 
     if p.state == "stand" then
@@ -62,6 +75,8 @@ player = {
       p_update_ckick(p, dt)
     elseif p.state == "hugged" then
       p_update_hugged(p, dt)
+    elseif p.state == "dead" then
+      p_update_dead(p, dt)
     end
     p.since_last_frame += dt
 
@@ -134,6 +149,10 @@ player = {
     return false
   end,
   draw = function(p, last_extent, dt)
+    if p.invincible > 0 and flr(p.invincible * 100) % 2 > 0 then
+      return
+    end
+
     palt(0, false)
     palt(15, true)
     local face_right = p.direction == 1
@@ -143,7 +162,11 @@ player = {
       p.draw_x = min(120,128 - (map_extent - p.map_x))
     end
 
-    spr(p.frames_current[p.frame_index], p.draw_x, p.draw_y, 1, 2, face_right and true or false,false)
+    local dim_x, dim_y = 1, 2
+    if p.state == "dead" then
+      dim_x = 2
+    end
+    spr(p.frames_current[p.frame_index], p.draw_x, p.draw_y, dim_x, dim_y, face_right and true or false,false)
 
     -- Draw player's collision box
     local x0, y0, x1, y1 = p:getBB()
@@ -190,8 +213,21 @@ player = {
   handle_boss_collision = function(p, collides)
     p.blocked = collides  
   end,
-  deduct_health = function(p, amount)
+  deduct_health = function(p, amount, flash)
     p.health = max(0, p.health - amount)
+    if flash then
+      p.invincible = 2
+    end
+  end,
+  get_hinted_vx = function(p)
+    if p.state == "walk" and player.draw_x >= 63 and player.draw_x <= 65 then
+      if btn(1) then
+        return 1
+      elseif btn(0) then
+        return -1
+      end
+    end
+    return 0
   end,
 }
 
@@ -201,7 +237,7 @@ function p_update_hugged(p, dt)
     return
   end
 
-  p:deduct_health(ceil(dt * p.hugged_by_count * 10))
+  p:deduct_health(ceil(dt * p.hugged_by_count * 10), false)
 
   if p.hugged_by_count == 0 then
     p.state = "stand"
@@ -425,4 +461,11 @@ function p_update_ckick(p, dt)
       p.since_last_state = 0
       p.frames_current = p.frames_crouch
     end
+end
+
+function p_update_dead(p, dt)
+  p.draw_x += p.vx
+  p.draw_y += p.vy
+  p.vx *= 0.8
+  p.vy = min(p.vy + 0.5, 10)
 end
