@@ -1,0 +1,2 @@
+BUTTON_O="🅾️"
+BUTTON_X="❎"

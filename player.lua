@@ -192,6 +192,12 @@ player = {
       spr(7,face_right and p.draw_x + 7 or p.draw_x - 7,p.draw_y+2,1,1,face_right and true or false)
     end
 
+    if p.hugged_by_count > 0 then
+      print("!", p.draw_x + 1, p.draw_y - rnd(3) - 5, 8)
+      print("!", p.draw_x + 3, p.draw_y - rnd(3) - 5, 8)
+      print("!", p.draw_x + 5, p.draw_y - rnd(3) - 5, 8)
+    end
+
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then

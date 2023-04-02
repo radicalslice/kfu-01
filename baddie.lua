@@ -105,11 +105,13 @@ bmgr = {
     return count
   end,
   combat_collision = function(bm,px0,py0,px1,py1)
+    local impact = false
     foreach(bm.baddies, function(b) 
       local bx0,by0,bx1,by1 = b:getBB()
       if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
         sfx(4)
         del(bm.baddies, b)
+        impact = true
       end
     end)
     foreach(bm.projectiles, function(p) 
@@ -117,8 +119,10 @@ bmgr = {
       if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
         sfx(4)
         del(bm.projectiles, p)
+        impact = true
       end
     end)
+    return impact
   end,
 
   boss_combat_collision = function(bm,px0,py0,px1,py1,x_offset)
