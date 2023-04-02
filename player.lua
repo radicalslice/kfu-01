@@ -36,7 +36,7 @@ player = {
 
     -- btn() = 001000
     ------     xoDURL
-    if btn() == 0 or btn() == 8 then
+    if btn() < 16 then
       player.freeze_input = false
     end
 
@@ -320,11 +320,11 @@ function p_update_stand(p)
       return
     end
 
-    if btn(0) and not player.freeze_input then
+    if btn(0) then
       p.direction = 0 
       p.frames_current = p.frames_walk
       p.state = "walk"
-    elseif btn(1) and not player.freeze_input then
+    elseif btn(1) then
       p.direction = 1
       p.frames_current = p.frames_walk
       p.state = "walk"
@@ -350,6 +350,28 @@ function p_update_walk(p)
     p.direction = 1
     p.map_x += p.blocked != true and 1 or 0
     p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
+  end
+
+  if btn(4) and not p.freeze_input then
+    p.state = "pantic"
+    p.state_t = 0.1
+    p.frame_index = 1
+    p.frames_current = p.frames_pantic
+    p.since_last_state = 0
+    p.freeze_input = true
+    sfx(1)
+    return
+  end
+
+  if btn(5) and not p.freeze_input then
+    p.state = "kantic"
+    p.state_t = 0.15
+    p.frames_current = p.frames_kantic
+    p.frame_index = 1
+    p.since_last_state = 0
+    p.freeze_input = true
+    sfx(0)
+    return
   end
 end
 

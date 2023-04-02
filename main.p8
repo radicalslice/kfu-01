@@ -43,7 +43,7 @@ function _init()
   player:reset(level.direction)
   __update = game_update
   __draw = game_draw
-  music(4)
+  -- music(4)
 end
 
 function _draw()
