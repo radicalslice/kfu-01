@@ -1,5 +1,13 @@
+baddie_bits = {
+  tree = {64,80,96,112,113},
+  wisp = {101, 102, 103},
+  flower = {117, 118, 119},
+  apple = {114,115,116},
+  boss = {79,79,95,111,127,104}
+}
 bmgr = {
   baddies = {},
+  bits = {},
   projectiles = {},
   boss = nil,
 
@@ -16,19 +24,26 @@ bmgr = {
     foreach(bm.projectiles, function(p)
       p:update(dt,vx)
       if p.x > 140 or p.x < -12 then
-        del(p.projectiles, p)
+        del(bm.projectiles, p)
+      end
+    end)
+    foreach(bm.bits, function(b)
+      b:update(dt)
+      if b.ttl <= 0 then
+        del(bm.bits, b)
       end
     end)
 
 
   end,
 
-  draw = function(bm, x_offset)
+  draw = function(bm, x_offset, dt)
     foreach(bm.baddies, function(b) b:draw() end)
     if bm.boss != nil then
       bm.boss:draw(x_offset)
     end
     foreach(bm.projectiles, function(p) p:draw() end)
+    foreach(bm.bits, function(b) b:draw(dt) end)
   end,
 
   -- return number of colliding baddies
@@ -112,6 +127,16 @@ bmgr = {
         sfx(4)
         del(bm.baddies, b)
         impact = true
+        -- add some bits
+        foreach(baddie_bits[b.type], function(bit)
+          add(bm.bits, new_bit(bit,
+            bx0,
+            by0,
+            (b.direction == 0 and 3 or -3) + (rnd(2) - 1),
+            -3 + (rnd(2) - 1),
+            b.direction)
+          )
+        end)
       end
     end)
     foreach(bm.projectiles, function(p) 
@@ -120,6 +145,15 @@ bmgr = {
         sfx(4)
         del(bm.projectiles, p)
         impact = true
+        foreach(baddie_bits.apple, function(bit)
+          add(bm.bits, new_bit(bit,
+            bx0,
+            by0,
+            (p.direction == 0 and 3 or -3) + (rnd(2) - 1),
+            -3 + (rnd(2) - 1),
+            p.direction)
+          )
+        end)
       end
     end)
     return impact
@@ -149,6 +183,16 @@ bmgr = {
       if bm.boss.health <= 0 then
         bm.boss.state = "dead"
         sfx(3)
+        foreach(baddie_bits.boss, function(bit)
+          add(bm.bits, new_bit(bit,
+            bx0,
+            by0,
+            (bm.boss.direction == 0 and 2 or -2) + (rnd(1) - 1),
+            -3 + (rnd(2) - 1),
+            bm.boss.direction)
+          )
+        end
+        )
       end
     end
   end,
@@ -179,6 +223,7 @@ bmgr = {
 
 function new_tree(direction, start_x)
   local baddie = {
+    type = "tree",
     direction = direction,
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
@@ -207,15 +252,12 @@ function new_tree(direction, start_x)
     end,
     draw = function(b)
       local face_left = b.direction == 0
-      palt(0, false)
-      palt(15, true)
       spr(b.frames_current[b.frame_index],b.x,b.y,1,2,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB()
       -- rect(x0, y0, x1, y1,13)
       local x0, y0, x1, y1 = b:getFrontBB()
       -- rect(x0, y0, x1, y1,8)
-      pal()
     end,
     getBB = function(b)
       local face_left = b.direction == 0
@@ -244,6 +286,7 @@ function new_flower(direction, start_x)
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
     y = 89,
+    type = "flower",
     frames_walk = {85,86,87,88},
     frames_threat = {67,68},
     frame_index = 1,
@@ -268,15 +311,12 @@ function new_flower(direction, start_x)
     end,
     draw = function(b)
       local face_left = b.direction == 0
-      palt(0, false)
-      palt(15, true)
       spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,1,1,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB()
       -- rect(x0, y0, x1, y1,13)
       local x0, y0, x1, y1 = b:getFrontBB()
       -- rect(x0, y0, x1, y1,8)
-      pal()
     end,
     getBB = function(b)
       local face_left = b.direction == 0
@@ -330,13 +370,10 @@ function new_projectile(direction, start_x, start_y)
     end,
     draw = function(p)
       local face_left = p.direction == 0
-      palt(0, false)
-      palt(15, true)
       spr(p.frames_current[p.frame_index],face_left and p.x or p.x,p.y,1,1,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = p:getBB()
       -- rect(x0, y0, x1, y1,13)
-      pal()
     end,
     getBB = function(p)
       return p.x+2,p.y+2,p.x+6,p.y+6
@@ -357,6 +394,7 @@ function new_boss(direction, start_x, difficulty)
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
     y = 80,
+    max_health = difficulty == 1 and 3 or 5,
     health = difficulty == 1 and 3 or 5,
     throw_threshold = difficulty == 1 and 0.95 or 0.5,
     state_t = difficulty == 1 and 1 or 0.5,
@@ -416,13 +454,10 @@ function new_boss(direction, start_x, difficulty)
         return
       end
       local face_left = b.direction == 0
-      palt(0, false)
-      palt(15, true)
       spr(b.frames_current[b.frame_index],b:getDrawX(x_offset),b.y,2,2,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB(x_offset)
       -- rect(x0, y0, x1, y1,13)
-      pal()
     end,
     getDrawX = function(b, x_offset)
       if b.direction == 1 then
@@ -507,6 +542,7 @@ end
 
 function new_wisp(direction, start_x)
   local baddie = {
+    type = "wisp",
     direction = direction,
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
@@ -534,15 +570,12 @@ function new_wisp(direction, start_x)
     end,
     draw = function(b)
       local face_left = b.direction == 0
-      palt(0, false)
-      palt(15, true)
       spr(b.frames_current[b.frame_index],b.x,b.y,1,1,(face_left and true or false),false)
       -- draw bounding box
       local x0, y0, x1, y1 = b:getBB()
       -- rect(x0, y0, x1, y1,13)
       local x0, y0, x1, y1 = b:getFrontBB()
       -- rect(x0, y0, x1, y1,8)
-      pal()
     end,
     getBB = function(b)
       local face_left = b.direction == 0
@@ -563,4 +596,29 @@ function new_wisp(direction, start_x)
   }
   baddie.frames_current = baddie.frames_walk
   return baddie
+end
+
+function new_bit(sprnum, x, y, vx, vy, direction)
+  local bit = {
+    x = x,
+    y = y,
+    vx = vx,
+    vy = vy,
+    sprnum = sprnum,
+    ttl = 1,
+    direction = direction,
+    update = function(b,dt)
+      b.x += b.vx
+      b.y += b.vy
+      b.vx *= 0.8
+      b.vy = min(b.vy + 0.5, 10)
+      b.ttl -= dt
+    end,
+    draw = function(b, dt)
+      if flr(dt * 100) % 2 > 0 then
+        spr(b.sprnum,b.x,b.y,1,1,(b.direction == 1 and true or false),false)
+      end
+    end
+  }
+  return bit
 end

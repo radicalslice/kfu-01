@@ -153,8 +153,6 @@ player = {
       return
     end
 
-    palt(0, false)
-    palt(15, true)
     local face_right = p.direction == 1
     if p.map_x < 64 then
       p.draw_x = max(0,p.map_x)
@@ -204,7 +202,6 @@ player = {
       -- rect(x2, y2, x3, y3,14)
       -- last_extent = face_right and x3 or x2
     end
-    pal()
     return last_extent
   end,
   handle_hug = function(p, current_huggers)
