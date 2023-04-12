@@ -92,6 +92,10 @@ bmgr = {
     if bm.boss == nil then
       return false
     end
+    
+    if bm.boss.state == "dead" then
+      return false
+    end
 
     local bx0,by0,bx1,by1 = bm.boss:getBB(x_offset)
     if collides(px0,py0,px1,py1,bx0,by0,bx1,by1) then
@@ -262,9 +266,9 @@ function new_tree(direction, start_x)
     getBB = function(b)
       local face_left = b.direction == 0
       if face_left then
-        return b.x-1,80,b.x+7,96
+        return b.x-1,80,b.x+5,96
       else
-        return b.x,80,b.x+8,96
+        return b.x+2,80,b.x+8,96
       end
     end,
     getFrontBB = function(b)

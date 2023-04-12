@@ -1,4 +1,8 @@
 map_extent = 384
+p_draw_y_stand = 80
+p_draw_y_crouch = 83
+p_punch_timing = 0.1
+p_kick_timing = 0.1
 player = {
   frame_wait = 0.08,
   frames_walk = {4,3,4,2},
@@ -22,7 +26,7 @@ player = {
     p.mash_count_p, p.mash_count_k = 0, 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = 96
-    p.draw_y = 80
+    p.draw_y = p_draw_y_stand
     p.direction = level_direction
     p.map_x = level_direction == 0 and map_extent - 16 or 16
     p.vx = 0
@@ -115,35 +119,23 @@ player = {
   end,
   getAtkBB = function(p)
     local face_right = p.direction == 1
-    if p.state == "punch" then
-      if face_right then
-        local left = p.draw_x + 8
-        return true,left,p.draw_y+6,left+2,p.draw_y+8
-        else
-        local left = p.draw_x -3
-        return true,left,p.draw_y+6,left+2,p.draw_y+8
-      end
-    elseif p.state == "kick" then
-      if face_right then
-        return true,p.draw_x+8,p.draw_y+4,p.draw_x + 12,p.draw_y+7
-        else
-        local left = p.draw_x -5
-        return true,left,p.draw_y+4,left + 3,p.draw_y+7
-      end
-    elseif p.state == "cpunch" then
-      if face_right then
-        return true,p.draw_x + 6,p.draw_y+6,p.draw_x + 10,p.draw_y+9
-        else
-        return true,p.draw_x - 3,p.draw_y+6,p.draw_x,p.draw_y+9
-      end
-   elseif p.state == "ckick" then
-      if face_right then
-        return true,p.draw_x + 8,p.draw_y+6,p.draw_x + 12,p.draw_y+9
-        else
-        return true,p.draw_x - 5,p.draw_y+6,p.draw_x - 1,p.draw_y+9
-      end
-    
+    local y_shift = 0
+    if p.state == "ckick" then
+      y_shift = 2
+    end
 
+    if p.state == "punch" or p.state == "cpunch" then
+      if face_right then
+        return true,p.draw_x + 7,p.draw_y+6,p.draw_x + 10,p.draw_y+8
+        else
+        return true,p.draw_x - 3,p.draw_y+6,p.draw_x,p.draw_y+8
+      end
+    elseif p.state == "kick" or p.state == "ckick" then
+      if face_right then
+        return true,p.draw_x+8,p.draw_y+y_shift+4,p.draw_x+12,p.draw_y+y_shift+7
+        else
+        return true,p.draw_x-6,p.draw_y+y_shift+4,p.draw_x-2,p.draw_y+y_shift+7
+      end
     end
 
     return false
@@ -190,7 +182,9 @@ player = {
       spr(7,face_right and p.draw_x + 7 or p.draw_x - 7,p.draw_y+2,1,1,face_right and true or false)
     end
 
-    if p.hugged_by_count > 0 then
+    if p.hugged_by_count > 0
+      and 
+      p.state == "hugged" then
       print("!", p.draw_x + 1, p.draw_y - rnd(3) - 5, 8)
       print("!", p.draw_x + 3, p.draw_y - rnd(3) - 5, 8)
       print("!", p.draw_x + 5, p.draw_y - rnd(3) - 5, 8)
@@ -199,7 +193,7 @@ player = {
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then
-      -- rect(x2, y2, x3, y3,14)
+      rect(x2, y2, x3, y3,14)
       -- last_extent = face_right and x3 or x2
     end
     return last_extent
@@ -257,12 +251,12 @@ function p_update_hugged(p, dt)
   end
 
   if btn(3) and p.frames_current == p.frames_stand then
-    p.draw_y += 3
+    p.draw_y = p_draw_y_crouch
     p.frames_current = p.frames_crouch
     return
   elseif not btn(3) and p.frames_current == p.frames_crouch then
     p.frames_current = p.frames_stand
-    p.draw_y -= 3
+    p.draw_y = p_draw_y_stand
     return
   end
 
@@ -302,7 +296,7 @@ end
 function p_update_stand(p)
     if btn(4) and not p.freeze_input then
       p.state = "pantic"
-      p.state_t = 0.1
+      p.state_t = p_punch_timing
       p.frames_current = p.frames_pantic
       p.since_last_state = 0
       p.freeze_input = true
@@ -312,7 +306,7 @@ function p_update_stand(p)
 
     if btn(5) and not p.freeze_input then
       p.state = "kantic"
-      p.state_t = 0.15
+      p.state_t = p_kick_timing
       p.frames_current = p.frames_kantic
       p.since_last_state = 0
       p.freeze_input = true
@@ -331,7 +325,7 @@ function p_update_stand(p)
     elseif btn(3) then
       p.frames_current = p.frames_crouch
       p.state = "crouch"
-      p.draw_y += 3
+      p.draw_y = p_draw_y_crouch
       return
     end
 end
@@ -354,7 +348,7 @@ function p_update_walk(p)
 
   if btn(4) and not p.freeze_input then
     p.state = "pantic"
-    p.state_t = 0.1
+    p.state_t = p_punch_timing
     p.frame_index = 1
     p.frames_current = p.frames_pantic
     p.since_last_state = 0
@@ -365,7 +359,7 @@ function p_update_walk(p)
 
   if btn(5) and not p.freeze_input then
     p.state = "kantic"
-    p.state_t = 0.15
+    p.state_t = p_kick_timing
     p.frames_current = p.frames_kantic
     p.frame_index = 1
     p.since_last_state = 0
@@ -381,7 +375,7 @@ function p_update_pantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "punch"
       p.since_last_state = 0
-      p.state_t = 0.15
+      p.state_t = p_punch_timing
       p.frames_current = p.frames_punch
     end
 end
@@ -392,7 +386,7 @@ function p_update_kantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "kick"
       p.since_last_state = 0
-      p.state_t = 0.2
+      p.state_t = p_kick_timing
       p.frames_current = p.frames_kick
     end
 end
@@ -422,7 +416,7 @@ end
 function p_update_crouch(p, dt)
     if btn(4) and not p.freeze_input then
       p.state = "cpantic"
-      p.state_t = 0.1
+      p.state_t = p_punch_timing
       p.frames_current = p.frames_cpantic
       p.since_last_state = 0
       p.freeze_input = true
@@ -430,7 +424,7 @@ function p_update_crouch(p, dt)
     end
     if btn(5) and not p.freeze_input then
       p.state = "ckantic"
-      p.state_t = 0.15
+      p.state_t = p_kick_timing
       p.frames_current = p.frames_ckantic
       p.since_last_state = 0
       p.freeze_input = true
@@ -440,7 +434,13 @@ function p_update_crouch(p, dt)
       p.state = "stand"
       p.since_last_state = 0
       p.frames_current = p.frames_stand
-      p.draw_y -= 3
+      p.draw_y = p_draw_y_stand
+    end
+    if btn(0) then
+      p.direction = 0
+    end
+    if btn(1) then
+      p.direction = 1
     end
 end
 
@@ -450,7 +450,7 @@ function p_update_cpantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "cpunch"
       p.since_last_state = 0
-      p.state_t = 0.15
+      p.state_t = p_punch_timing
       p.frames_current = p.frames_cpunch
     end
 end
@@ -461,7 +461,7 @@ function p_update_ckantic(p, dt)
     if p.since_last_state > p.state_t then
       p.state = "ckick"
       p.since_last_state = 0
-      p.state_t = 0.2
+      p.state_t = p_kick_timing
       p.frames_current = p.frames_ckick
     end
 end
