@@ -1,6 +1,6 @@
 map_extent = 384
-p_draw_y_stand = 80
-p_draw_y_crouch = 83
+p_draw_y_stand = 81
+p_draw_y_crouch = 84
 p_punch_timing = 0.1
 p_kick_timing = 0.1
 FREEZE_NONE = 63
@@ -44,7 +44,6 @@ player = {
     --      1           1|0            1
     --      0            1             0
     --      0            0             1
-    printh("ai: "..player.allowed_inputs)
     for i=0,5 do
       -- 101111 (allowed inputs, blocking punch)
       -- 010000

@@ -18,8 +18,11 @@ __draw = nil
 
 timers = {}
 impact_sprites = {16,32}
+-- for shifting arrows up and down
+arrow_offsets = {0, 1, 2, 2, 1, 0, -1, -2, -2, -1}
 fx = {
-  impacts = {}
+  impacts = {},
+  arrows = {},
 }
 
 
@@ -97,7 +100,13 @@ function game_update()
     if impact.ttl <= 0 then
       del(fx.impacts, impact)
     end
-    spr(impact.spr, impact.x, impact.y)
+  end)
+  foreach(fx.arrows, function(arrow) 
+    arrow.since_last_frame += dt
+    if arrow.since_last_frame >= arrow.frame_wait then
+      arrow.offset_index = (arrow.offset_index % #arrow_offsets) + 1
+      arrow.since_last_frame = 0
+    end
   end)
 
   local px0, py0, px1, py1 = player:getBB()
@@ -129,6 +138,20 @@ function game_update()
       add(fx.impacts, {x=base_pos[1] + flr(rnd(2)) - 1, y= base_pos[2] + flr(rnd(2)) - 1, spr=impact_sprites[flr(rnd(2)) + 1], ttl=0.1})
     end
     bmgr:boss_combat_collision(px0,py0,px1,py1,player.map_x)
+  end
+
+  -- check if boss has been killed, draw arrow if so
+  if bmgr.boss != nil
+    and bmgr.boss.state == "dead"
+    and #fx.arrows == 0
+    then
+    add(fx.arrows,
+    {
+      offset_index = 1,
+      since_last_frame = 0,
+      frame_wait = 0.1,
+      direction= level.direction,
+    })
   end
 
 
@@ -165,6 +188,10 @@ function game_update()
         player:reset(level.direction, FREEZE_NONE)
         bmgr:reset()
         -- music(4)
+        fx = {
+          impacts = {},
+          arrows = {},
+        }
         __update = game_update
         __draw = level_init_draw
         add(timers, {
@@ -191,10 +218,13 @@ function game_update()
     level.batches = parse_batches(levels[level_index].batches)
     level.direction = levels[level_index].direction
     level.boss = levels[level_index].boss
-    -- 111100
     player:reset(level.direction, FREEZE_LR)
     bmgr:reset()
     last_level_init = last_ts
+    fx = {
+      impacts = {},
+      arrows = {},
+    }
     __update = game_update
     __draw = level_init_draw
     add(timers, {
@@ -241,9 +271,6 @@ function game_draw()
   extent = player:draw(extent, now)
   bmgr:draw(player.map_x, now)
 
-  print("freeze: " .. player.allowed_inputs,72,4,7)
-  print("level: ".. level_index, 64,20,0)
-  --print("health: "..player.health, 4, 2, 3)
   spr(0,2,3)
   -- player health draw
   line(13, 3, 63, 3, 7)
@@ -267,6 +294,16 @@ function game_draw()
 
   foreach(fx.impacts, function(impact) 
     spr(impact.spr, impact.x, impact.y)
+  end)
+
+  foreach(fx.arrows, function(arrow) 
+    spr(
+      level.direction == 0 and 14 or 30,
+      level.direction == 0 and 2 or 110,
+      64 + arrow_offsets[arrow.offset_index],
+      2,
+      1
+    )
   end)
   pal()
   -- print("p: ", 4, 9, 2)
@@ -317,22 +354,22 @@ function collides(x0, y0, x1, y1, x2, y2, x3, y3)
 end
 
 __gfx__
-f444444ff444444ffffffffffffffffff444444ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff444444ff444444f4444444fffffffff
-ff994444ff994444f444444ff444444fff994444fffffffffffffffffffffffff444444ff444444ff444444ff444444fff994444ff994444f9c94444ffffffff
-f9c94444f9c94444ff994444ff994444f9c94444ffffffffffffffffffffffffff994444ff994444ff994444ff994444f9c94444f9c9444499444944ffffffff
-9999494499994944f9c94444f9c9444499994944fffffffffffffffffffffffff9c94444f9c94444f9c94444f9c944449999494499994944f444444fffffffff
-f4444944f44449449999494499994944f4444944fffffffffffffffffff00fff99994944999949449999494499994944f4444944f4444944ff44488fffffffff
-ff44444fff44444ff4444944f4444944ff44444fffffffff00fffffffff0888ff4444944f4444944f4444944f4444944ff44444fff44444fff00099fffffffff
-ff4498ffff4498ffff44444fff44444fff4498ffffffffff088ffffffff0888fff84444fff44444fff84444fff44444fff4498ffff4498ff0022899fffffffff
-ff8998fff0899809ff4498ffff4498ffff89808fffffffff0888fffffffff88f880888fff99088ffff4498ffff4498ffff80888fff89808f00228800ffffffff
-fffffffff0888099ff88880fff808889ff88098f99ffffffff888fff08ffffff880888fff99088ffff8998098f899809ff99088fff88099f4444444fffffffff
-f7ff7f7ff9888899f9888099f9990889ff88998f99fffffffff888ff08ffffffff88888fff88888f8088809980888099ff99888fff88899ff9c94444ffffffff
-ff7f7fffff00000ff9000099f990000fff00990fffffffffffff88ffffffffffff00000fff00000f8808889988088899ff00000fff00000f99444944ffffffff
-fffff77fff88888fff8888ffff22888fff88888fffffffffffffffffffffffffff88888fff88888ff88008fff88008ffff88888fff88888ff484444fffffffff
-f77fffffff88888fff8888ffff22888fff88888ffffffffffffffffffffffffff8888888ff88888fff888fffff888fffff28888fff88888fff44488fffffffff
-fff7f7ffff88f88ff88ff22ff22ff888fff8022ffffffffffffffffffffffffff88fff00ff88f88ffff88ffffff88ffff002f88ff008f22fff000099ffffffff
-f7f7ff7fff00f00ff00ff222022ff800fff0000ffffffffffffffffffffffffff00fff00ff00f80ffff00ffffff00fff000ff00f000ff00f28888899ffffffff
-fffffffff000f00f000fff00000fff00fff0000fffffffffffffffffffffffff000ffff0f000f00ffff000fffff000fffffff00ffffff00f22888800ffffffff
+f444444ff444444ffffffffffffffffff444444ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff444444ff444444ffff7ffff77ffffff
+ff994444ff994444f444444ff444444fff994444fffffffffffffffffffffffff444444ff444444ff444444ff444444fff994444ff994444ff787ff7887ff7ff
+f9c94444f9c94444ff994444ff994444f9c94444ffffffffffffffffffffffffff994444ff994444ff994444ff994444f9c94444f9c94444f7887778777f787f
+9999494499994944f9c94444f9c9444499994944fffffffffffffffffffffffff9c94444f9c94444f9c94444f9c9444499994944999949447888887878878787
+f4444944f44449449999494499994944f4444944fffffffffffffffffff00fff99994944999949449999494499994944f4444944f44449447888887877878787
+ff44444fff44444ff4444944f4444944ff44444fffffffff00fffffffff0888ff4444944f4444944f4444944f4444944ff44444fff44444ff7887777887f787f
+ff4498ffff4498ffff44444fff44444fff4498ffffffffff088ffffffff0888fff84444fff44444fff84444fff44444fff4498ffff4498ffff787fff77fff7ff
+ff8998fff0899809ff4498ffff4498ffff89808fffffffff0888fffffffff88f880888fff99088ffff4498ffff4498ffff80888fff89808ffff7ffffffffffff
+fffffffff0888099ff88880fff808889ff88098f99ffffffff888fff08ffffff880888fff99088ffff8998098f899809ff99088fff88099fff77ffffffff7fff
+f7ff7f7ff9888899f9888099f9990889ff88998f99fffffffff888ff08ffffffff88888fff88888f8088809980888099ff99888fff88899ff7887ff7fff787ff
+ff7f7fffff00000ff9000099f990000fff00990fffffffffffff88ffffffffffff00000fff00000f8808889988088899ff00000fff00000f78777f787777887f
+fffff77fff88888fff8888ffff22888fff88888fffffffffffffffffffffffffff88888fff88888ff88008fff88008ffff88888fff88888f7878878787888887
+f77fffffff88888fff8888ffff22888fff88888ffffffffffffffffffffffffff8888888ff88888fff888fffff888fffff28888fff88888f7877878787888887
+fff7f7ffff88f88ff88ff22ff22ff888fff8022ffffffffffffffffffffffffff88fff00ff88f88ffff88ffffff88ffff002f88ff008f22ff7887f787777887f
+f7f7ff7fff00f00ff00ff222022ff800fff0000ffffffffffffffffffffffffff00fff00ff00f80ffff00ffffff00fff000ff00f000ff00fff77fff7fff787ff
+fffffffff000f00f000fff00000fff00fff0000fffffffffffffffffffffffff000ffff0f000f00ffff000fffff000fffffff00ffffff00fffffffffffff7fff
 fffffffff444444ff444444ff444444ff44444ffffffffffffffffffffffffffff4444ffff4444ffffffffffffffffffffffffffffffffffffffffffffffffff
 f7f7ff7fff994444ff994444ff994444f999444fff44444ffffffffff4444ffff499994ff499994fffffffffffffffffffffffffffffffffffffffffffffffff
 fff7f7fff9c94444f9c94444f9c94444fc99444fff444444ffffffffff9944ff449c9c4ff4c9c944ffffffffffffffffffffffffffffffffffffffffffffffff
@@ -381,7 +418,7 @@ fb343fffff4fffff8488fffff788ffffff8888ffa77fffff977fffffff44ffffb343444bbff79077
 443fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff70077009fff454000444ffffff995444f444fffffff999900444ffffffffffff
 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff9440044fff54fff44ff45fffff99fff44ff45fffff54f9944ff45fffffffffff
 fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff4444444ff44fff45ff44fffff44fff45ff44fffff44fff45ff44fffffffffff
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+ffffffffffffffffffffffffffffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 ffffffffffffffffffffffffffffffff000000000000000000000300000000000000000000000000000000000000000000000000000000000000000000000000
 99fff9fffff9ff9ff99ff99ff9ff9f9f000000000000000033003303000000000000000000000000000000000000000000000000000000000000000000000000
 ff99ff99fffffff9ffff99fff9f9ff9f00000000333333333333bb33000000000000000000000000000000000000000000000000000000000000000000000000
