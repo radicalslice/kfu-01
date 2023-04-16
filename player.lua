@@ -3,6 +3,8 @@ p_draw_y_stand = 80
 p_draw_y_crouch = 83
 p_punch_timing = 0.1
 p_kick_timing = 0.1
+FREEZE_NONE = 63
+FREEZE_LR = 60
 player = {
   frame_wait = 0.08,
   frames_walk = {4,3,4,2},
@@ -17,7 +19,7 @@ player = {
   frames_ckantic = {36},
   frames_ckick = {37},
   frames_dead = {38},
-  reset = function(p, level_direction)
+  reset = function(p, level_direction, freeze_mask)
     p.frames_current = p.frames_stand  
     p.frame_index = 1
     p.state = "stand"
@@ -33,15 +35,26 @@ player = {
     p.vy = 0
     p.hugged_by_count = 0
     p.blocked = false
-    p.freeze_input = true
+    p.allowed_inputs = freeze_mask
     p.invincible = 0
   end,
   update = function(p, dt)
 
-    -- btn() = 001000
-    ------     xoDURL
-    if btn() < 16 then
-      player.freeze_input = false
+    -- allowed       button       allowed'
+    --      1           1|0            1
+    --      0            1             0
+    --      0            0             1
+    printh("ai: "..player.allowed_inputs)
+    for i=0,5 do
+      -- 101111 (allowed inputs, blocking punch)
+      -- 010000
+      -- 111100
+      if player.allowed_inputs & (1 << i) == 0 then
+        -- input currently not allowed
+        if not btn(i) then
+          player.allowed_inputs |= (1 << i)
+        end
+      end
     end
 
     if p.invincible > 0 then
@@ -193,7 +206,7 @@ player = {
     -- Draw fist / leg collision
     local checkme,x2,y2,x3,y3 = p:getAtkBB()
     if checkme then
-      rect(x2, y2, x3, y3,14)
+      -- rect(x2, y2, x3, y3,14)
       -- last_extent = face_right and x3 or x2
     end
     return last_extent
@@ -260,9 +273,11 @@ function p_update_hugged(p, dt)
     return
   end
 
-  if btnp(4) and not p.freeze_input then
+  local filtered = btnp() & p.allowed_inputs
+  if filtered & (1 << 4) > 0 then
     p.mash_count_p += 1
-    p.freeze_input = true
+    -- 101111 = 47
+    p.allowed_inputs &= ~(1 << 4) -- 111111 & 101111
     if p.mash_count_p > p.hugged_by_count then
       if p.frames_current == p.frames_crouch then
         p.state = "cpantic"
@@ -275,9 +290,9 @@ function p_update_hugged(p, dt)
       p.mash_count_p , p.mash_count_k = 0,0
       return
     end
-  elseif btnp(5) and not p.freeze_input then
+  elseif filtered & (1 << 5) > 0 then
     p.mash_count_k += 1
-    p.freeze_input = true
+    p.allowed_inputs &= ~(1<<5)
     if p.mash_count_k > p.hugged_by_count then
       if p.frames_current == p.frames_crouch then
         p.state = "ckantic"
@@ -294,31 +309,35 @@ function p_update_hugged(p, dt)
 end
 
 function p_update_stand(p)
-    if btn(4) and not p.freeze_input then
+    local filtered = btn() & p.allowed_inputs
+    if filtered & (1 << 4) > 0 then
+      -- Shift a 1 to the fourth position:
+      -- 010000 -> 101111
+      -- 111111 & 101111 = 101111
+      p.allowed_inputs &= ~(1 << 4)
       p.state = "pantic"
       p.state_t = p_punch_timing
       p.frames_current = p.frames_pantic
       p.since_last_state = 0
-      p.freeze_input = true
       sfx(1)
       return
     end
 
-    if btn(5) and not p.freeze_input then
+    if filtered & (1 << 5) > 0 then
+      p.allowed_inputs &= ~(1 << 5)
       p.state = "kantic"
       p.state_t = p_kick_timing
       p.frames_current = p.frames_kantic
       p.since_last_state = 0
-      p.freeze_input = true
       sfx(0)
       return
     end
 
-    if btn(0) then
+    if filtered & (1 << 0) > 0 then
       p.direction = 0 
       p.frames_current = p.frames_walk
       p.state = "walk"
-    elseif btn(1) then
+    elseif filtered & (1 << 1) > 0 then
       p.direction = 1
       p.frames_current = p.frames_walk
       p.state = "walk"
@@ -346,24 +365,25 @@ function p_update_walk(p)
     p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
   end
 
-  if btn(4) and not p.freeze_input then
+  local filtered = btn() & p.allowed_inputs
+  if filtered & (1 << 4) > 0 then
     p.state = "pantic"
+    p.allowed_inputs &= ~(1 << 4)
     p.state_t = p_punch_timing
     p.frame_index = 1
     p.frames_current = p.frames_pantic
     p.since_last_state = 0
-    p.freeze_input = true
     sfx(1)
     return
   end
 
-  if btn(5) and not p.freeze_input then
+  if filtered & (1 << 5) > 0 then
     p.state = "kantic"
+    p.allowed_inputs &= ~(1 << 5)
     p.state_t = p_kick_timing
     p.frames_current = p.frames_kantic
     p.frame_index = 1
     p.since_last_state = 0
-    p.freeze_input = true
     sfx(0)
     return
   end
@@ -414,20 +434,21 @@ function p_update_kick(p, dt)
 end
 
 function p_update_crouch(p, dt)
-    if btn(4) and not p.freeze_input then
+    local filtered = btn() & p.allowed_inputs
+    if filtered & (1 << 4) > 0 then
+      p.allowed_inputs &= ~(1 << 4)
       p.state = "cpantic"
       p.state_t = p_punch_timing
       p.frames_current = p.frames_cpantic
       p.since_last_state = 0
-      p.freeze_input = true
       sfx(1)
     end
-    if btn(5) and not p.freeze_input then
+    if filtered & (1 << 5) > 0 then
+      p.allowed_inputs &= ~(1 << 5)
       p.state = "ckantic"
       p.state_t = p_kick_timing
       p.frames_current = p.frames_ckantic
       p.since_last_state = 0
-      p.freeze_input = true
       sfx(0)
     end
     if not btn(3) then

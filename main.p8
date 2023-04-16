@@ -42,7 +42,7 @@ function _init()
   level.batches = parse_batches(levels[level_index].batches)
   level.direction = levels[level_index].direction
   level.boss = levels[level_index].boss
-  player:reset(level.direction)
+  player:reset(level.direction, FREEZE_NONE)
   __update = game_update
   __draw = level_init_draw
   add(timers, {
@@ -162,7 +162,7 @@ function game_update()
         level.batches = parse_batches(levels[level_index].batches)
         level.direction = levels[level_index].direction
         level.boss = levels[level_index].boss
-        player:reset(level.direction)
+        player:reset(level.direction, FREEZE_NONE)
         bmgr:reset()
         -- music(4)
         __update = game_update
@@ -191,7 +191,8 @@ function game_update()
     level.batches = parse_batches(levels[level_index].batches)
     level.direction = levels[level_index].direction
     level.boss = levels[level_index].boss
-    player:reset(level.direction)
+    -- 111100
+    player:reset(level.direction, FREEZE_LR)
     bmgr:reset()
     last_level_init = last_ts
     __update = game_update
@@ -240,7 +241,7 @@ function game_draw()
   extent = player:draw(extent, now)
   bmgr:draw(player.map_x, now)
 
-  print("freeze: " .. (player.freeze_input and "y" or "n"),72,4,0)
+  print("freeze: " .. player.allowed_inputs,72,4,7)
   print("level: ".. level_index, 64,20,0)
   --print("health: "..player.health, 4, 2, 3)
   spr(0,2,3)
@@ -252,7 +253,6 @@ function game_draw()
   if player.health > 0 then
     rectfill(13, 4, (player.health \ 2) + 13, 9, 8)
   end
-  print("h: "..player.health, 67, 13)
   -- boss health draw
   if bmgr.boss != nil then
     spr(120,2,16)
