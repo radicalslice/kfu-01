@@ -1,29 +1,41 @@
 map_extent = 384
 p_draw_y_stand = 81
 p_draw_y_crouch = 84
-p_punch_timing = 0.1
-p_kick_timing = 0.1
 FREEZE_NONE = 63
 FREEZE_LR = 60
 player = {
   frame_wait = 0.08,
-  frames_walk = {4,3,4,2},
-  frames_stand = {1},
-  frames_pantic = {9},
-  frames_punch = {8},
-  frames_kantic = {11},
-  frames_kick = {10},
-  frames_crouch = {33},
-  frames_cpantic = {34},
-  frames_cpunch = {35},
-  frames_ckantic = {36},
-  frames_ckick = {37},
-  frames_dead = {38},
+  timings = {
+    cpantic = 0.1,
+    ckantic = 0.1,
+    cpunch = 0.1,
+    ckick = 0.1,
+    pantic = 0.1,
+    kantic = 0.1,
+    punch = 0.1,
+    kick = 0.1,
+    walk = 1,
+    stand = 1,
+  },
+  frames = {
+    walk = {4,3,4,2},
+    stand = {1},
+    pantic = {9},
+    kantic = {11},
+    punch = {8},
+    kick = {10},
+    crouch = {33},
+    cpantic = {34},
+    cpunch = {35},
+    ckantic = {36},
+    ckick = {37},
+    dead = {38},
+  },
   reset = function(p, level_direction, freeze_mask)
-    p.frames_current = p.frames_stand  
+    p.frames_current = p.frames["stand"]
     p.frame_index = 1
     p.state = "stand"
-    p.state_t = 0
+    p.state_ttl = 0
     p.health = 100
     p.mash_count_p, p.mash_count_k = 0, 0
     p.since_last_frame, p.since_last_state = 0, 0
@@ -37,6 +49,14 @@ player = {
     p.blocked = false
     p.allowed_inputs = freeze_mask
     p.invincible = 0
+  end,
+  change_state = function(p, s)
+    p.state = s
+    p.since_last_state = 0
+    p.frames_current = p.frames[s]
+    p.state_ttl = p.timings[s]
+    p.frame_index = 1
+    printh("state: "..s)
   end,
   update = function(p, dt)
 
@@ -62,7 +82,7 @@ player = {
 
     if p.health <= 0 and p.state != "dead" then
       p.state = "dead" 
-      p.frames_current = p.frames_dead
+      p.frames_current = p.frames["dead"]
       p.vx = p.direction == 0 and 4 or -4
       p.vy = -3
     end
@@ -213,7 +233,7 @@ player = {
   handle_hug = function(p, current_huggers)
     p.hugged_by_count = current_huggers
     if p.hugged_by_count > 0 and (p.state == "stand" or p.state == "crouch" or p.state == "walk") then
-      p.frames_current = (p.state == "crouch") and p.frames_crouch or p.frames_stand
+      p.frames_current = (p.state == "crouch") and p.frames["crouch"] or p.frames["stand"]
       p.state = "hugged"
       p.since_last_state = 0
       p.frame_index = 1
@@ -249,10 +269,7 @@ function p_update_hugged(p, dt)
   p:deduct_health(ceil(dt * p.hugged_by_count * 10), false)
 
   if p.hugged_by_count == 0 then
-    p.state = "stand"
-    p.frames_current = p.frames_stand
-    p.frame_index = 1
-    p.since_last_state = 0
+    p:change_state("stand")
     return
   end
 
@@ -262,12 +279,12 @@ function p_update_hugged(p, dt)
     p.direction = 1
   end
 
-  if btn(3) and p.frames_current == p.frames_stand then
+  if btn(3) and p.frames_current == p.frames["stand"] then
     p.draw_y = p_draw_y_crouch
-    p.frames_current = p.frames_crouch
+    p.frames_current = p.frames["crouch"]
     return
-  elseif not btn(3) and p.frames_current == p.frames_crouch then
-    p.frames_current = p.frames_stand
+  elseif not btn(3) and p.frames_current == p.frames["crouch"] then
+    p.frames_current = p.frames["stand"]
     p.draw_y = p_draw_y_stand
     return
   end
@@ -278,14 +295,11 @@ function p_update_hugged(p, dt)
     -- 101111 = 47
     p.allowed_inputs &= ~(1 << 4) -- 111111 & 101111
     if p.mash_count_p > p.hugged_by_count then
-      if p.frames_current == p.frames_crouch then
-        p.state = "cpantic"
-        p.frames_current = p.frames_cpantic
+      if p.frames_current == p.frames["crouch"] then
+        p:change_state("cpantic")
       else 
-        p.state = "pantic"
-        p.frames_current = p.frames_pantic
+        p:change_state("pantic")
       end
-      p.since_last_state = 0
       p.mash_count_p , p.mash_count_k = 0,0
       return
     end
@@ -293,14 +307,11 @@ function p_update_hugged(p, dt)
     p.mash_count_k += 1
     p.allowed_inputs &= ~(1<<5)
     if p.mash_count_k > p.hugged_by_count then
-      if p.frames_current == p.frames_crouch then
-        p.state = "ckantic"
-        p.frames_current = p.frames_ckantic
+      if p.frames_current == p.frames["crouch"] then
+        p:change_state("ckantic")
       else
-        p.state = "kantic"
-        p.frames_current = p.frames_kantic
+        p:change_state("kantic")
       end
-      p.since_last_state = 0
       p.mash_count_p , p.mash_count_k = 0,0
       return
     end
@@ -314,35 +325,26 @@ function p_update_stand(p)
       -- 010000 -> 101111
       -- 111111 & 101111 = 101111
       p.allowed_inputs &= ~(1 << 4)
-      p.state = "pantic"
-      p.state_t = p_punch_timing
-      p.frames_current = p.frames_pantic
-      p.since_last_state = 0
+      p:change_state("pantic")
       sfx(1)
       return
     end
 
     if filtered & (1 << 5) > 0 then
       p.allowed_inputs &= ~(1 << 5)
-      p.state = "kantic"
-      p.state_t = p_kick_timing
-      p.frames_current = p.frames_kantic
-      p.since_last_state = 0
+      p:change_state("kantic")
       sfx(0)
       return
     end
 
     if filtered & (1 << 0) > 0 then
       p.direction = 0 
-      p.frames_current = p.frames_walk
-      p.state = "walk"
+      p:change_state("walk")
     elseif filtered & (1 << 1) > 0 then
       p.direction = 1
-      p.frames_current = p.frames_walk
-      p.state = "walk"
+      p:change_state("walk")
     elseif btn(3) then
-      p.frames_current = p.frames_crouch
-      p.state = "crouch"
+      p:change_state("crouch")
       p.draw_y = p_draw_y_crouch
       return
     end
@@ -351,9 +353,7 @@ end
 function p_update_walk(p)
   
   if not btn(0) and not btn(1) then
-    p.frames_current = p.frames_stand
-    p.frame_index = 1
-    p.state = "stand"
+    p:change_state("stand")
   elseif btn(0) and p.map_x > 0 then
     p.direction = 0 
     p.map_x -= p.blocked != true and 1 or 0
@@ -366,23 +366,15 @@ function p_update_walk(p)
 
   local filtered = btn() & p.allowed_inputs
   if filtered & (1 << 4) > 0 then
-    p.state = "pantic"
     p.allowed_inputs &= ~(1 << 4)
-    p.state_t = p_punch_timing
-    p.frame_index = 1
-    p.frames_current = p.frames_pantic
-    p.since_last_state = 0
+    p:change_state("pantic")
     sfx(1)
     return
   end
 
   if filtered & (1 << 5) > 0 then
-    p.state = "kantic"
     p.allowed_inputs &= ~(1 << 5)
-    p.state_t = p_kick_timing
-    p.frames_current = p.frames_kantic
-    p.frame_index = 1
-    p.since_last_state = 0
+    p:change_state("kantic")
     sfx(0)
     return
   end
@@ -391,32 +383,24 @@ end
 function p_update_pantic(p, dt)
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "punch"
-      p.since_last_state = 0
-      p.state_t = p_punch_timing
-      p.frames_current = p.frames_punch
+    if p.since_last_state > p.state_ttl then
+      p:change_state("punch")
     end
 end
 
 function p_update_kantic(p, dt)
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "kick"
-      p.since_last_state = 0
-      p.state_t = p_kick_timing
-      p.frames_current = p.frames_kick
+    if p.since_last_state > p.state_ttl then
+      p:change_state("kick")
     end
 end
 
 function p_update_punch(p, dt)
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "stand"
-      p.since_last_state = 0
-      p.frames_current = p.frames_stand
+    if p.since_last_state > p.state_ttl then
+      p:change_state("stand")
     end
 
 end
@@ -425,10 +409,8 @@ function p_update_kick(p, dt)
 
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "stand"
-      p.since_last_state = 0
-      p.frames_current = p.frames_stand
+    if p.since_last_state > p.state_ttl then
+      p:change_state("stand")
     end
 end
 
@@ -436,24 +418,16 @@ function p_update_crouch(p, dt)
     local filtered = btn() & p.allowed_inputs
     if filtered & (1 << 4) > 0 then
       p.allowed_inputs &= ~(1 << 4)
-      p.state = "cpantic"
-      p.state_t = p_punch_timing
-      p.frames_current = p.frames_cpantic
-      p.since_last_state = 0
+      p:change_state("cpantic")
       sfx(1)
     end
     if filtered & (1 << 5) > 0 then
       p.allowed_inputs &= ~(1 << 5)
-      p.state = "ckantic"
-      p.state_t = p_kick_timing
-      p.frames_current = p.frames_ckantic
-      p.since_last_state = 0
+      p:change_state("ckantic")
       sfx(0)
     end
     if not btn(3) then
-      p.state = "stand"
-      p.since_last_state = 0
-      p.frames_current = p.frames_stand
+      p:change_state("stand")
       p.draw_y = p_draw_y_stand
     end
     if btn(0) then
@@ -467,22 +441,16 @@ end
 function p_update_cpantic(p, dt)
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "cpunch"
-      p.since_last_state = 0
-      p.state_t = p_punch_timing
-      p.frames_current = p.frames_cpunch
+    if p.since_last_state > p.state_ttl then
+      p:change_state("cpunch")
     end
 end
 
 function p_update_ckantic(p, dt)
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "ckick"
-      p.since_last_state = 0
-      p.state_t = p_kick_timing
-      p.frames_current = p.frames_ckick
+    if p.since_last_state > p.state_ttl then
+      p:change_state("ckick")
     end
 end
 
@@ -490,10 +458,8 @@ function p_update_cpunch(p, dt)
 
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "crouch"
-      p.since_last_state = 0
-      p.frames_current = p.frames_crouch
+    if p.since_last_state > p.state_ttl then
+      p:change_state("crouch")
     end
 end
 
@@ -501,10 +467,8 @@ function p_update_ckick(p, dt)
 
     p.since_last_state += dt
 
-    if p.since_last_state > p.state_t then
-      p.state = "crouch"
-      p.since_last_state = 0
-      p.frames_current = p.frames_crouch
+    if p.since_last_state > p.state_ttl then
+      p:change_state("crouch")
     end
 end
 
@@ -514,3 +478,4 @@ function p_update_dead(p, dt)
   p.vx *= 0.8
   p.vy = min(p.vy + 0.5, 10)
 end
+

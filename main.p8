@@ -38,6 +38,7 @@ function handle_timers(ts, dt)
 end
 
 function _init()
+  printh("init")
   last_ts = 0
   last_level_init = 0
   -- spawn :: Num -> (tree || flower) -> Direction -> Void
