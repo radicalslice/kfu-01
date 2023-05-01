@@ -52,6 +52,7 @@ player = {
     p.state = "stand"
     p.state_ttl = 0
     p.health = 100
+    p.od = 9
     p.mash_count_p, p.mash_count_k = 0, 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = 96
@@ -78,7 +79,6 @@ player = {
   end,
   set_draw_x = function(p, x)
     p.draw_x = x
-    printh("pdx: "..p.draw_x)
   end,
   update = function(p, dt)
 
@@ -98,7 +98,23 @@ player = {
       end
     end
 
-    if btnp(2) then
+    if p.overdrive_on then
+      p.od -= dt 
+      if p.od <= 0 then
+        p.overdrive_on = false
+        p.od = 0
+      end
+    end
+
+    local od_states = {
+      "pantic_od",
+      "punch_od",
+      "kantic_od",
+      "kick_od",
+      "ckantic_od",
+      "ckick_od",
+    }
+    if btnp(2) and p.od > 0 and not exists(p.state, od_states) then
       p.overdrive_on = not p.overdrive_on
     end
 
@@ -164,27 +180,24 @@ player = {
 
   end,
   getBB = function(p)
-    local face_right = p.direction == 1
-    if face_right then
-      return p.draw_x - 1,p.draw_y,p.draw_x + 8,p.draw_y + 16
+    if p.direction == 0 then
+      return { p.draw_x,p.draw_y,p.draw_x + 8,p.draw_y + 16 } -- face left
     else
-      return p.draw_x,p.draw_y,p.draw_x + 8,p.draw_y + 16
+      return { p.draw_x - 1,p.draw_y,p.draw_x + 8,p.draw_y + 16 } -- face right
     end
   end,
   getFrontBB = function(p)
-    local face_right = p.direction == 1
-    if face_right then
-      return p.draw_x+6,p.draw_y,p.draw_x + 8,p.draw_y + 16
+    if p.direction == 0 then
+      return { p.draw_x,p.draw_y,p.draw_x + 2,p.draw_y + 16 }
     else
-      return p.draw_x,p.draw_y,p.draw_x + 2,p.draw_y + 16
+      return { p.draw_x+6,p.draw_y,p.draw_x + 8,p.draw_y + 16 }
     end
   end,
   getFrontBufferBB = function(p)
-    local face_right = p.direction == 1
-    if face_right then
-      return p.draw_x+11,p.draw_y,p.draw_x + 15,p.draw_y + 16
+    if p.direction == 0 then
+      return {p.draw_x-7,p.draw_y,p.draw_x - 4,p.draw_y + 16} -- face left
     else
-      return p.draw_x-7,p.draw_y,p.draw_x - 4,p.draw_y + 16
+      return {p.draw_x+11,p.draw_y,p.draw_x + 15,p.draw_y + 16} -- face right
     end
   end,
   getAtkBB = function(p)
@@ -194,17 +207,18 @@ player = {
       y_shift = 2
     end
 
+    local draw_x, draw_y = p.draw_x, p.draw_y
     if p.state == "punch" or p.state == "cpunch" then
       if face_right then
-        return true,p.draw_x + 7,p.draw_y+6,p.draw_x + 10,p.draw_y+8
+        return true,{draw_x + 7,draw_y+6,draw_x + 10,draw_y+8}
         else
-        return true,p.draw_x - 3,p.draw_y+6,p.draw_x,p.draw_y+8
+        return true,{draw_x - 3,draw_y+6,draw_x,draw_y+8}
       end
     elseif p.state == "kick" or p.state == "ckick" then
       if face_right then
-        return true,p.draw_x+8,p.draw_y+y_shift+4,p.draw_x+12,p.draw_y+y_shift+7
+        return true,{draw_x+8,draw_y+y_shift+4,draw_x+12,draw_y+y_shift+7}
         else
-        return true,p.draw_x-6,p.draw_y+y_shift+4,p.draw_x-2,p.draw_y+y_shift+7
+        return true,{draw_x-6,draw_y+y_shift+4,draw_x-2,draw_y+y_shift+7}
       end
     end
 
@@ -263,9 +277,9 @@ player = {
     end
 
     --[[ Draw fist / leg collision
-    local checkme,x2,y2,x3,y3 = p:getAtkBB()
+    local checkme,bb = p:getAtkBB()
     if checkme then
-      -- rect(x2, y2, x3, y3,14)
+      -- rect(bb[0], bb[1], bb[2], bb[3],14)
       -- last_extent = face_right and x3 or x2
     end
     ]]--
