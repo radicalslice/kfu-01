@@ -27,7 +27,16 @@ bmgr = {
       )
     end)
   end,
-
+  kill_huggers = function(bm)
+    foreach(bm.baddies, function(b)
+      if b.state == "hug" then
+        local bb = b:getBB()
+        bm:add_bits(b.type, bb[1], bb[2], b.direction)
+        del(bm.baddies, b)
+        sfx(4)
+      end
+    end)
+  end,
   update = function(bm,dt,vx,x_offset)
     foreach(bm.baddies, function(b) b:update(dt,vx) end)
     if bm.boss != nil then
@@ -130,40 +139,31 @@ bmgr = {
     end)
     return count
   end,
-  combat_collision = function(bm,atkbb)
-    local impact = false
-    foreach(bm.baddies, function(b) 
-      local bb = b:getBB()
-      if collides_new(atkbb,b:getBB()) then
+  new_combat_collision = function(bm, tbl, atkbb)
+    for i=1,#bm[tbl] do
+      local tgt = bm[tbl][i]
+      local bb = tgt:getBB() 
+      if collides_new(atkbb, bb) then
         sfx(4)
-        del(bm.baddies, b)
-        impact = true
+        -- del(bm.projectiles, p)
+        -- add impact sprite
+        add(fx.impacts, {x=bb[1] + flr(rnd(2)) - 1, y= bb[2] + flr(rnd(2)) - 1, spr=impact_sprites[flr(rnd(2)) + 1], ttl=0.1})
         -- add some bits
-        bm:add_bits(b.type, bb[1], bb[2], b.direction)
+        bm:add_bits(tgt.type, bb[1], bb[2], tgt.direction)
+        return tgt
       end
-    end)
-    foreach(bm.projectiles, function(p) 
-      local bb = p:getBB()
-      if collides_new(atkbb,bb) then
-        sfx(4)
-        del(bm.projectiles, p)
-        impact = true
-        -- add some bits
-        bm:add_bits('apple', bb[1], bb[2], p.direction)
-      end
-    end)
-    return impact
+    end
+    return nil
   end,
 
   boss_combat_collision = function(bm,atkbb,x_offset)
     if bm.boss == nil then
-      return
+      return false
     elseif bm.boss.state == "dead" then
-      return
+      return false
     elseif bm.boss.invincible > 0 then
-      return
+      return false
     end
-    printh("Xoffset: "..x_offset)
 
     local bossbb = bm.boss:getBB(x_offset)
     if collides_new(atkbb,bossbb) then
@@ -190,8 +190,10 @@ bmgr = {
           )
         end
         )
+        return true
       end
     end
+    return false
   end,
 
   spawn = function(bm,btypes,direction)
@@ -225,37 +227,16 @@ function new_tree(direction, start_x)
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
     y = 81,
+    height = 2,
+    width = 1,
     frames_walk = {65,66},
     frames_threat = {67,68},
     frame_index = 1,
     frame_wait = 0.2,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt,vx)
-      if b.state == "hug" then
-        return
-      end
-
-      b.x += b.vx - vx
-      b.since_last_frame += dt
-
-      if b.since_last_frame > b.frame_wait then
-        b.frame_index += 1
-        b.since_last_frame = 0
-        if b.frame_index > #b.frames_current then
-          b.frame_index = 1
-        end
-      end
-    end,
-    draw = function(b)
-      local face_left = b.direction == 0
-      spr(b.frames_current[b.frame_index],b.x,b.y,1,2,(face_left and true or false),false)
-      -- draw bounding box
-      -- local x0, y0, x1, y1 = b:getBB()
-      -- rect(x0, y0, x1, y1,13)
-      -- local x0, y0, x1, y1 = b:getFrontBB()
-      -- rect(x0, y0, x1, y1,8)
-    end,
+    update = basic_baddie_update,
+    draw = basic_baddie_draw,
     getBB = function(b)
       if b.direction == 0 then
         return {b.x-1,80,b.x+5,96} -- face left
@@ -281,6 +262,8 @@ function new_flower(direction, start_x)
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
     y = 89,
+    height = 1,
+    width = 1,
     type = "flower",
     frames_walk = {85,86,87,88},
     frames_threat = {67,68},
@@ -288,31 +271,8 @@ function new_flower(direction, start_x)
     frame_wait = 0.05,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt,vx)
-      if b.state == "hug" then
-        return
-      end
-
-      b.x += b.vx - vx
-      b.since_last_frame += dt
-
-      if b.since_last_frame > b.frame_wait then
-        b.frame_index += 1
-        b.since_last_frame = 0
-        if b.frame_index > #b.frames_current then
-          b.frame_index = 1
-        end
-      end
-    end,
-    draw = function(b)
-      local face_left = b.direction == 0
-      spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,1,1,(face_left and true or false),false)
-      -- draw bounding box
-      -- local x0, y0, x1, y1 = b:getBB()
-      -- rect(x0, y0, x1, y1,13)
-      -- local x0, y0, x1, y1 = b:getFrontBB()
-      -- rect(x0, y0, x1, y1,8)
-    end,
+    update = basic_baddie_update,
+    draw = basic_baddie_draw,
     getBB = function(b)
       if b.direction == 0 then
         return {b.x-1,b.y,b.x+7,b.y+8} -- facing left
@@ -338,6 +298,7 @@ function new_projectile(direction, start_x, start_y)
     x = start_x,
     vx = direction == 0 and -1.8 or 1.8,
     y = start_y,
+    type = "apple",
     state_t = 1,
     since_last_state = 0,
     frames_default = {97,98,99,100},
@@ -540,41 +501,19 @@ function new_wisp(direction, start_x)
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
     y = 82,
+    height = 1,
+    width = 1,
     frames_walk = {69,70,71},
     frame_index = 1,
     frame_wait = 0.1,
     since_last_frame = 0,
     frames_current = nil,
-    update = function(b,dt,vx)
-      if b.state == "hug" then
-        return
-      end
-
-      b.x += b.vx - vx
-      b.since_last_frame += dt
-
-      if b.since_last_frame > b.frame_wait then
-        b.frame_index += 1
-        b.since_last_frame = 0
-        if b.frame_index > #b.frames_current then
-          b.frame_index = 1
-        end
-      end
-    end,
-    draw = function(b)
-      local face_left = b.direction == 0
-      spr(b.frames_current[b.frame_index],b.x,b.y,1,1,(face_left and true or false),false)
-      -- draw bounding box
-      -- local x0, y0, x1, y1 = b:getBB()
-      -- rect(x0, y0, x1, y1,13)
-      -- local x0, y0, x1, y1 = b:getFrontBB()
-      -- rect(x0, y0, x1, y1,8)
-    end,
+    update = basic_baddie_update,
+    draw = basic_baddie_draw,
     getBB = function(b)
       if b.direction == 0 then
         return {b.x-1,b.y,b.x+7,b.y+8} -- face left
       else
-        printh("BB right: "..b.x..','..b.y)
         return {b.x,b.y,b.x+8,b.y+8} -- face right
       end
     end,
@@ -613,4 +552,32 @@ function new_bit(sprnum, x, y, vx, vy, direction)
     end
   }
   return bit
+end
+
+function basic_baddie_update(b, dt, vx)
+    -- update = function(b,dt,vx)
+    if b.state == "hug" then
+      return
+    end
+
+    b.x += b.vx - vx
+    b.since_last_frame += dt
+
+    if b.since_last_frame > b.frame_wait then
+      b.frame_index += 1
+      b.since_last_frame = 0
+      if b.frame_index > #b.frames_current then
+        b.frame_index = 1
+      end
+    end
+end
+
+function basic_baddie_draw(b)
+      -- draw bounding box
+      -- local x0, y0, x1, y1 = b:getBB()
+      -- rect(x0, y0, x1, y1,13)
+      -- local x0, y0, x1, y1 = b:getFrontBB()
+      -- rect(x0, y0, x1, y1,8)
+  local face_left = b.direction == 0
+  spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,b.width,b.height,(face_left and true or false),false)
 end

@@ -1,13 +1,17 @@
 map_extent = 384
+max_od = 9
 p_draw_y_stand = 81
 p_draw_y_crouch = 84
 FREEZE_NONE = 63
 FREEZE_LR = 60
 
+dblw_states = {"dead", "pantic_od", "punch_od", "kantic_od", "kick_od", "ckick_od", "unmash"}
 player_projectiles = {}
 
 player = {
   frame_wait = 0.08,
+  last_score = 0,
+  score = 0,
   timings = {
     cpantic = 0.1,
     ckantic = 0.1,
@@ -23,6 +27,7 @@ player = {
     punch_od = 0.6,
     kick = 0.1,
     kick_od = 0.6,
+    unmash = 0.2,
     walk = 1,
     stand = 1,
   },
@@ -45,15 +50,17 @@ player = {
     ckick = {37},
     ckick_od = {226},
     dead = {38},
+    unmash = {198},
   },
   reset = function(p, level_direction, freeze_mask)
     p.frames_current = p.frames["stand"]
     p.frame_index = 1
     p.state = "stand"
+    p.score = p.last_score
     p.state_ttl = 0
     p.health = 100
-    p.od = 9
-    p.mash_count_p, p.mash_count_k = 0, 0
+    p.od = 0
+    p.mash_count = 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = 96
     p.draw_y = p_draw_y_stand
@@ -66,7 +73,6 @@ player = {
     p.allowed_inputs = freeze_mask
     p.invincible = 0
     p.overdrive_on = false
-    p.overdrive = 0
   end,
   change_state = function(p, s)
     p.state = s
@@ -75,7 +81,6 @@ player = {
     p.state_ttl = p.timings[s]
     p.frame_index = 1
 
-    printh("state: "..s)
   end,
   set_draw_x = function(p, x)
     p.draw_x = x
@@ -129,45 +134,8 @@ player = {
       p.vy = -3
     end
 
-    if p.state == "stand" then
-      p_update_stand(p, dt)
-    elseif p.state == "walk" then
-      p_update_walk(p, dt)
-    elseif p.state == "pantic" then
-      p_update_pantic(p, dt)
-    elseif p.state == "pantic_od" then
-      p_update_pantic_od(p, dt)
-    elseif p.state == "kantic" then
-      p_update_kantic(p, dt)
-    elseif p.state == "kantic_od" then
-      p_update_kantic_od(p, dt)
-    elseif p.state == "punch" then
-      p_update_punch(p, dt)
-    elseif p.state == "punch_od" then
-      p_update_punch_od(p, dt)
-    elseif p.state == "kick" then
-      p_update_kick(p, dt)
-    elseif p.state == "kick_od" then
-      p_update_kick_od(p, dt)
-    elseif p.state == "crouch" then
-      p_update_crouch(p, dt)
-    elseif p.state == "cpantic" then
-      p_update_cpantic(p, dt)
-    elseif p.state == "cpunch" then
-      p_update_cpunch(p, dt)
-    elseif p.state == "ckantic" then
-      p_update_ckantic(p, dt)
-    elseif p.state == "ckantic_od" then
-      p_update_ckantic_od(p, dt)
-    elseif p.state == "ckick" then
-      p_update_ckick(p, dt)
-    elseif p.state == "ckick_od" then
-      p_update_ckick_od(p, dt)
-    elseif p.state == "hugged" then
-      p_update_hugged(p, dt)
-    elseif p.state == "dead" then
-      p_update_dead(p, dt)
-    end
+    -- do state update
+    player_state_funcs[p.state](p, dt)
     p.since_last_frame += dt
 
     if p.since_last_frame > p.frame_wait then
@@ -182,23 +150,29 @@ player = {
   getBB = function(p)
     if p.direction == 0 then
       return { p.draw_x,p.draw_y,p.draw_x + 8,p.draw_y + 16 } -- face left
-    else
-      return { p.draw_x - 1,p.draw_y,p.draw_x + 8,p.draw_y + 16 } -- face right
     end
+    if exists(p.state, dblw_states) then
+      return { p.draw_x +7,p.draw_y,p.draw_x + 15,p.draw_y + 16 } -- face right, dbl
+    end
+    return { p.draw_x - 1,p.draw_y,p.draw_x + 8,p.draw_y + 16 } -- face right
   end,
   getFrontBB = function(p)
     if p.direction == 0 then
       return { p.draw_x,p.draw_y,p.draw_x + 2,p.draw_y + 16 }
-    else
-      return { p.draw_x+6,p.draw_y,p.draw_x + 8,p.draw_y + 16 }
     end
+    if exists(p.state, dblw_states) then
+      return { p.draw_x + 14,p.draw_y,p.draw_x + 16,p.draw_y + 16 } -- face right, dbl
+    end
+      return { p.draw_x+6,p.draw_y,p.draw_x + 8,p.draw_y + 16 }
   end,
   getFrontBufferBB = function(p)
     if p.direction == 0 then
       return {p.draw_x-7,p.draw_y,p.draw_x - 4,p.draw_y + 16} -- face left
-    else
-      return {p.draw_x+11,p.draw_y,p.draw_x + 15,p.draw_y + 16} -- face right
     end
+    if exists(p.state, dblw_states) then
+      return { p.draw_x + 19,p.draw_y,p.draw_x + 23,p.draw_y + 16 } -- face right, dbl
+    end
+    return {p.draw_x+11,p.draw_y,p.draw_x + 15,p.draw_y + 16} -- face right
   end,
   getAtkBB = function(p)
     local face_right = p.direction == 1
@@ -224,7 +198,7 @@ player = {
 
     return false
   end,
-  draw = function(p, last_extent, dt)
+  draw = function(p, dt)
     if p.invincible > 0 and flr(p.invincible * 100) % 2 > 0 then
       return
     end
@@ -238,34 +212,29 @@ player = {
     local face_right = p.direction == 1
 
     local dim_x, dim_y = 1, 2
-    if p.state == "dead" or p.state == "pantic_od" or p.state == "punch_od" or p.state == "kantic_od" or p.state == "kick_od" or p.state == "ckick_od" then
+    if exists(p.state, dblw_states) then
       dim_x = 2
     end
 
     spr(p.frames_current[p.frame_index], p.draw_x, p.draw_y, dim_x, dim_y, face_right and true or false,false)
 
     -- Draw player's collision box
-    local x0, y0, x1, y1 = p:getBB()
-    -- rect(x0, y0, x1, y1,11)
+    local bb = p:getBB()
+    foreach({p:getBB(), p:getFrontBB(), p:getFrontBufferBB()}, function(bb)
+      -- rect(bb[1], bb[2], bb[3], bb[4], 11)
+    end)
 
-    -- Find the front collision box
-    x0, y0, x1, y1 = p:getFrontBB()
-    -- rect(x0, y0, x1, y1,1)
-
-    x0, y0, x1, y1 = p:getFrontBufferBB()
-    -- rect(x0, y0, x1, y1,1)
-
+    local atkbits = {
+      punch = {21, -2, 2, 7}, --spr, x left, x right, y
+      kantic = {23, -2, 2, 8},
+      kick = {6, -4, 4, 5},
+      cpunch = {21, -2, 2, 7},
+      ckick = {7, -7,7,2 }
+    }
     -- Draw the attack-y bits
-    if p.state == "punch" then
-      spr(21, face_right and p.draw_x + 8 or p.draw_x - 2, p.draw_y + 7)
-    elseif p.state == "kantic" then
-      spr(23,face_right and p.draw_x + 2 or p.draw_x - 2,p.draw_y + 8,1,1,face_right and true or false)
-    elseif p.state == "kick" then
-      spr(6,face_right and p.draw_x + 4 or p.draw_x - 4,p.draw_y,1,2,face_right and true or false)
-    elseif p.state == "cpunch" then
-      spr(21,face_right and p.draw_x + 2 or p.draw_x - 2,p.draw_y+7,1,1,face_right and true or false)
-    elseif p.state == "ckick" then
-      spr(7,face_right and p.draw_x + 7 or p.draw_x - 7,p.draw_y+2,1,1,face_right and true or false)
+    if atkbits[p.state] != nil then
+      local tbl = atkbits[p.state]
+      spr(tbl[1], face_right and p.draw_x + tbl[3] or p.draw_x + tbl[2], p.draw_y + tbl[4], 1,1,face_right and true or false)
     end
 
     if p.hugged_by_count > 0
@@ -280,14 +249,12 @@ player = {
     local checkme,bb = p:getAtkBB()
     if checkme then
       -- rect(bb[0], bb[1], bb[2], bb[3],14)
-      -- last_extent = face_right and x3 or x2
     end
     ]]--
     if p.overdrive_on then
       pal(8,8)
       pal(4,4)
     end
-    return last_extent
   end,
   handle_hug = function(p, current_huggers)
     p.hugged_by_count = current_huggers
@@ -306,6 +273,13 @@ player = {
     if flash then
       p.invincible = 2
     end
+
+    if p.od > 0 then
+      p.od = 0
+    end
+  end,
+  add_od = function(p, amount)
+    p.od = min(p.od + amount, 9)
   end,
   get_hinted_vx = function(p)
     if p.state == "walk" and player.draw_x >= 63 and player.draw_x <= 65 then
@@ -319,65 +293,8 @@ player = {
   end,
 }
 
-function p_update_hugged(p, dt)
-  -- deduct some health in here
-  if p.state != "stand" and p.state != "crouch" and p.state != "hugged" then
-    return
-  end
-
-  p:deduct_health(ceil(dt * p.hugged_by_count * 10), false)
-
-  if p.hugged_by_count == 0 then
-    p:change_state("stand")
-    return
-  end
-
-  if btn(0) then
-    p.direction = 0
-  elseif btn(1) then
-    p.direction = 1
-  end
-
-  if btn(3) and p.frames_current == p.frames["stand"] then
-    p.draw_y = p_draw_y_crouch
-    p.frames_current = p.frames["crouch"]
-    return
-  elseif not btn(3) and p.frames_current == p.frames["crouch"] then
-    p.frames_current = p.frames["stand"]
-    p.draw_y = p_draw_y_stand
-    return
-  end
-
-  local filtered = btnp() & p.allowed_inputs
-  if filtered & (1 << 4) > 0 then
-    p.mash_count_p += 1
-    -- 101111 = 47
-    p.allowed_inputs &= ~(1 << 4) -- 111111 & 101111
-    if p.mash_count_p > p.hugged_by_count then
-      if p.frames_current == p.frames["crouch"] then
-        p:change_state("cpantic")
-      else 
-        p:change_state("pantic")
-      end
-      p.mash_count_p , p.mash_count_k = 0,0
-      return
-    end
-  elseif filtered & (1 << 5) > 0 then
-    p.mash_count_k += 1
-    p.allowed_inputs &= ~(1<<5)
-    if p.mash_count_k > p.hugged_by_count then
-      if p.frames_current == p.frames["crouch"] then
-        p:change_state("ckantic")
-      else
-        p:change_state("kantic")
-      end
-      p.mash_count_p , p.mash_count_k = 0,0
-      return
-    end
-  end
-end
-
-function p_update_stand(p)
+player_state_funcs = {
+  stand = function(p)
     if p.map_x < 64 then
       p:set_draw_x(max(0,p.map_x))
     elseif p.map_x > (map_extent - 64) then
@@ -424,98 +341,90 @@ function p_update_stand(p)
       p.draw_y = p_draw_y_crouch
       return
     end
-end
-
-function p_update_walk(p)
-  if p.map_x < 64 then
-    p:set_draw_x(max(0,p.map_x))
-  elseif p.map_x > (map_extent - 64) then
-    p:set_draw_x(min(120,128 - (map_extent - p.map_x)))
-  else
-    p:set_draw_x(64)
-  end
-
-  
-  if not btn(0) and not btn(1) then
-    p:change_state("stand")
-  elseif btn(0) and p.map_x > 0 then
-    p.direction = 0 
-    p.map_x -= p.blocked != true and 1 or 0
-    p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and -1 or 0
-  elseif btn(1) and p.map_x < (map_extent - 8) then
-    p.direction = 1
-    p.map_x += p.blocked != true and 1 or 0
-    p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
-  end
-
-  local filtered = btn() & p.allowed_inputs
-  if filtered & (1 << 4) > 0 then
-    p.allowed_inputs &= ~(1 << 4)
-    if p.overdrive_on then
-      p:set_draw_x(p.direction == 0 and p.draw_x -2 or p.draw_x - 6)
-      p:change_state("pantic_od")
+  end,
+  walk = function(p)
+    if p.map_x < 64 then
+      p:set_draw_x(max(0,p.map_x))
+    elseif p.map_x > (map_extent - 64) then
+      p:set_draw_x(min(120,128 - (map_extent - p.map_x)))
     else
-      p:change_state("pantic")
+      p:set_draw_x(64)
     end
-    sfx(1)
-    return
-  end
 
-  if filtered & (1 << 5) > 0 then
-    p.allowed_inputs &= ~(1 << 5)
-    if p.overdrive_on then
-      p:set_draw_x(p.direction == 0 and p.draw_x-2 or p.draw_x -6)
-      p:change_state("kantic_od")
-    else
-      p:change_state("kantic")
+    if not btn(0) and not btn(1) then
+      p:change_state("stand")
+    elseif btn(0) and p.map_x > 0 then
+      p.direction = 0 
+      p.map_x -= p.blocked != true and 1 or 0
+      p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and -1 or 0
+    elseif btn(1) and p.map_x < (map_extent - 8) then
+      p.direction = 1
+      p.map_x += p.blocked != true and 1 or 0
+      p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
     end
-    sfx(0)
-    return
-  end
-end
 
-function p_update_pantic(p, dt)
+    local filtered = btn() & p.allowed_inputs
+    if filtered & (1 << 4) > 0 then
+      p.allowed_inputs &= ~(1 << 4)
+      if p.overdrive_on then
+        p:set_draw_x(p.direction == 0 and p.draw_x -2 or p.draw_x - 6)
+        p:change_state("pantic_od")
+      else
+        p:change_state("pantic")
+      end
+      sfx(1)
+      return
+    end
+
+    if filtered & (1 << 5) > 0 then
+      p.allowed_inputs &= ~(1 << 5)
+      if p.overdrive_on then
+        p:set_draw_x(p.direction == 0 and p.draw_x-2 or p.draw_x -6)
+        p:change_state("kantic_od")
+      else
+        p:change_state("kantic")
+      end
+      sfx(0)
+      return
+    end
+  end,
+  pantic = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("punch")
     end
-end
-
-function p_update_pantic_od(p, dt)
+  end,
+  pantic_od = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("punch_od")
     end
-end
-
-function p_update_kantic(p, dt)
+  end,
+  kantic = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("kick")
     end
-end
-
-function p_update_kantic_od(p, dt)
+  end,
+  kantic_od = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("kick_od")
     end
-end
-
-function p_update_punch(p, dt)
+  end,
+  punch = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("stand")
     end
+  end,
+  punch_od = function(p, dt)
 
-end
-
-function p_update_punch_od(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
@@ -523,31 +432,29 @@ function p_update_punch_od(p, dt)
       p:set_draw_x(p.direction == 0 and p.draw_x + 2 or p.draw_x + 6)
       p:change_state("stand")
     end
-    
+
     -- spawn projectile here...
     if #player_projectiles == 0 then
       local start_x = (p.direction == 0 and p.draw_x-8 or p.draw_x + 16)
       add(player_projectiles, {head_x=start_x, tail_x=start_x, direction=p.direction,top_y=p.draw_y+5,bottom_y=p.draw_y+13,ttl=p.timings.punch_od + 0.01,t="punch"})
     end
-end
-
-function p_update_kick(p, dt)
+  end,
+  kick = function(p, dt)
 
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("stand")
     end
-end
-
-function p_update_kick_od(p, dt)
+  end,
+  kick_od = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:set_draw_x(p.direction == 0 and p.draw_x+2 or p.draw_x+6)
       p:change_state("stand")
     end
-    
+
     -- spawn projectile here...
     if #player_projectiles == 0 then
       local start_x_0 = (p.direction == 0 and p.draw_x-7 or p.draw_x - 5)
@@ -555,9 +462,9 @@ function p_update_kick_od(p, dt)
       add(player_projectiles, {head_x=start_x_0, tail_x=start_x_0, direction=0,top_y=p.draw_y+5,bottom_y=p.draw_y+8,ttl=p.timings.punch_od + 0.01,t="kick"})
       add(player_projectiles, {head_x=start_x_1, tail_x=start_x_1, direction=1,top_y=p.draw_y+5,bottom_y=p.draw_y+8,ttl=p.timings.punch_od + 0.01,t="kick"})
     end
-end
+  end,
 
-function p_update_crouch(p, dt)
+  crouch = function(p, dt)
     local filtered = btn() & p.allowed_inputs
     if filtered & (1 << 4) > 0 then
       p.allowed_inputs &= ~(1 << 4)
@@ -589,52 +496,46 @@ function p_update_crouch(p, dt)
     if btn(1) then
       p.direction = 1
     end
-end
-
-function p_update_cpantic(p, dt)
+  end,
+  cpantic = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("cpunch")
     end
-end
-
-function p_update_ckantic(p, dt)
+  end,
+  ckantic = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("ckick")
     end
-end
-
-function p_update_ckantic_od(p, dt)
+  end,
+  ckantic_od = function(p, dt)
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:set_draw_x((p.direction == 0 and p.draw_x-4 or p.draw_x-4))
       p:change_state("ckick_od")
     end
-end
-
-function p_update_cpunch(p, dt)
-
-    p.since_last_state += dt
-
-    if p.since_last_state > p.state_ttl then
-      p:change_state("crouch")
-    end
-end
-
-function p_update_ckick(p, dt)
+  end,
+  cpunch = function(p, dt)
 
     p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("crouch")
     end
-end
+  end,
+  ckick = function(p, dt)
 
-function p_update_ckick_od(p, dt)
+    p.since_last_state += dt
+
+    if p.since_last_state > p.state_ttl then
+      p:change_state("crouch")
+    end
+  end,
+  ckick_od = function(p, dt)
 
     p.since_last_state += dt
 
@@ -650,12 +551,65 @@ function p_update_ckick_od(p, dt)
       add(player_projectiles, {head_x=start_x_0, tail_x=start_x_0, direction=0,top_y=p.draw_y+7,bottom_y=p.draw_y+10,ttl=p.timings.punch_od + 0.01,t="kick"})
       add(player_projectiles, {head_x=start_x_1, tail_x=start_x_1, direction=1,top_y=p.draw_y+7,bottom_y=p.draw_y+10,ttl=p.timings.punch_od + 0.01,t="kick"})
     end
-end
+  end,
+  dead = function(p, dt)
+    p.draw_x += p.vx
+    p.draw_y += p.vy
+    p.vx *= 0.8
+    p.vy = min(p.vy + 0.5, 10)
+  end,
+  hugged = function(p, dt)
+    -- deduct some health in here
+    if p.state != "stand" and p.state != "crouch" and p.state != "hugged" then
+      return
+    end
 
-function p_update_dead(p, dt)
-  p.draw_x += p.vx
-  p.draw_y += p.vy
-  p.vx *= 0.8
-  p.vy = min(p.vy + 0.5, 10)
-end
+    p:deduct_health(ceil(dt * p.hugged_by_count * 10), false)
 
+    if p.hugged_by_count == 0 then
+      p:change_state("stand")
+      return
+    end
+
+    if btn(0) then
+      p.direction = 0
+    elseif btn(1) then
+      p.direction = 1
+    end
+
+    if btn(3) and p.frames_current == p.frames["stand"] then
+      p.draw_y = p_draw_y_crouch
+      p.frames_current = p.frames["crouch"]
+      return
+    elseif not btn(3) and p.frames_current == p.frames["crouch"] then
+      p.frames_current = p.frames["stand"]
+      p.draw_y = p_draw_y_stand
+      return
+    end
+
+    local filtered = btnp() & p.allowed_inputs
+    if filtered & (1 << 4) > 0 then
+      p.mash_count += 1
+      -- 101111 = 47
+      p.allowed_inputs &= ~(1 << 4) -- 111111 & 101111
+    elseif filtered & (1 << 5) > 0 then
+      p.mash_count += 1
+      p.allowed_inputs &= ~(1<<5)
+    end
+
+    if p.mash_count > p.hugged_by_count then
+      p:change_state("unmash")
+      bmgr:kill_huggers()
+      p.mash_count = 0
+      p.draw_y = p_draw_y_stand
+      sfx(6)
+      return
+    end
+  end,
+  unmash = function(p, dt)
+    p.since_last_state += dt
+    if p.since_last_state > p.state_ttl then
+      p:change_state("stand")
+    end
+  end,
+}
