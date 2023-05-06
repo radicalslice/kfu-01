@@ -40,10 +40,10 @@ function handle_timers(ts, dt)
   end)
 end
 
-function _init()
-  printh("init")
-  last_ts = 0
-  last_level_init = 0
+function game_init()
+  printh("game init")
+  last_ts = time()
+  last_level_init = time()
   -- spawn :: Num -> (tree || flower) -> Direction -> Void
   -- bmgr:spawn({"flower", "flower", "flower"}, 1)
   level.batches = parse_batches(levels[level_index].batches)
@@ -52,14 +52,21 @@ function _init()
   player:reset(level.direction, FREEZE_NONE)
   __update = game_update
   __draw = level_init_draw
+  -- allows level marquee to play
   add(timers, {
     remaining = 2.8,
     callback = function()
-      -- __update = game_update
       __draw = game_draw
     end
   })
-  -- music(4)
+  music(4)
+end
+
+function _init()
+  printh("cart init")
+  last_ts = 0
+  __update = title_update
+  __draw = title_draw
 end
 
 function _draw()
@@ -83,6 +90,7 @@ function level_init_draw()
   game_draw()
 
   local elapsed = time() - last_level_init
+  printh("elapsed: "..elapsed)
   local res = 74
   if elapsed <= 1 then
     res = easeOutQuad(elapsed, 0, 74, 1)
@@ -329,7 +337,6 @@ function game_update()
     add(timers, {
       remaining = 2.8,
       callback = function()
-        -- __update = game_update
         __draw = game_draw
       end
     })
@@ -344,6 +351,54 @@ function victory_draw()
 end
 
 function victory_update()
+  -- allow the game to restart via button press
+end
+
+title_message = {
+  {4,9,10}, -- cycle colors
+  1, -- index into colors
+  0, -- time since last update
+  0.2, -- rate of change
+}
+title_input_freeze = false
+function title_draw()
+  cls()
+  palt(0, false)
+  rectfill(0,0,128,128,12)
+  rectfill(0,34,128,80,0)
+  spr(132, 24, 37, 10, 4) 
+  pal()
+  print("press "..BUTTON_O.." or "..BUTTON_X, 38, 74, title_message[1][title_message[2]])
+  print("v0.1.0", 1, 122, 1)
+  print("@kitasuna", 92, 122, 1)
+end
+
+function title_update()
+  if (btnp(4) or btnp(5)) and not title_input_freeze then
+    title_input_freeze = true
+    title_message[4] = 0.01
+    add(timers, {
+      remaining=1.0,
+      callback=function()
+        game_init() 
+        title_input_freeze = false
+        sfx(7, -2)
+      end
+    })
+    sfx(7)
+  end
+  local now = time()
+  local dt = now - last_ts
+  title_message[3] += dt
+  if title_message[3] > title_message[4] then
+    title_message[2] += 1
+    if title_message[2] > #title_message[1] then
+      title_message[2] = 1
+    end
+    title_message[3] = 0
+  end
+  last_ts = now
+  handle_timers(timers, dt)
 end
 
 function death_update()
@@ -677,7 +732,7 @@ __sfx__
 0001000021670206501f6301e6301d6001b6001964016640126400e6400b640086400560003600016400064000640006000060000600006001760000600006000460000600006000060000600006000060000600
 50060000210621e0621c05219052150001400212002100001506212062100520d0520000000000000000000009062060620405201052000000000000000000000000000002000020000200002000020000200002
 000100000d1320d1420e1420e1420f1421014210142101421014211132111321113210132101320f1320f1320e1320d1220d1220c1220b1220a1220a122091220811208112071120511204112031120211202112
-91070000104000f4000e4000d4000e4000d4000c4000a4000e4000d4000c4000b400104000f4000e4000d40000402004020040200402004020040200402004020040200402004020040200402004020040200402
+000300001c7421c742237022370218732187323a7022d7021472214722177021970214722147221a7021c7021472214722257022570214722147221d702227021472214722277022870214722147222c7022c702
 51060000210001e0001c00019000150001400012000100001500012000100000d0000000000000000000000009000060000400001000000000000000000000000000000002000020000200002000020000200002
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
