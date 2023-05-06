@@ -121,6 +121,19 @@ function game_update()
     else
       popup.color = 10
     end
+
+    if popup.frames != nil then
+      popup.since_last_frame += dt
+
+      if popup.since_last_frame > popup.frame_wait then
+        popup.frame_index += 1
+        popup.since_last_frame = 0
+        if popup.frame_index > #popup.frames then
+          popup.frame_index = 1
+        end
+      end
+    end
+
     if popup.ttl <= 0 then
       del(fx.popups, popup)
     end
@@ -178,11 +191,39 @@ function game_update()
      local killed = bmgr:new_combat_collision(tbl, {x0,projectile.top_y,x1,projectile.bottom_y})
       if killed != nil then
         del(bmgr[tbl], killed)
-        player.score += 1
+        if tbl == "baddies" then -- only add score / popup for baddie, not projectiles
+          add(fx.popups,
+            {
+              ttl=1,
+              color=0,
+              x=killed.x,
+              y=killed.y-5,
+              dy=0.8,
+              frame_index=1,
+              frames={228,229,230,231},
+              frame_wait=0.05,
+              since_last_frame=0
+            })
+          player.score += 1
+        end
       end
     end)
     local boss_killed = bmgr:boss_combat_collision({x0,projectile.top_y,x1,projectile.bottom_y},player.map_x)
     if boss_killed then
+      for i=1,5 do
+        add(fx.popups,
+        {
+          ttl=1,
+          color=0,
+          x=bmgr.boss:getDrawX(player.map_x) - (rnd(32) - 16),
+          y=bmgr.boss.y - (rnd(8) - 4),
+          dy=0.8 - (rnd(0.2) - 0.1),
+          frame_index=flr(rnd(4)) + 1,
+          frames={228,229,230,231},
+          frame_wait=0.05,
+          since_last_frame=0
+        })
+      end
       player.score += 5
     end
 
@@ -318,7 +359,7 @@ function game_draw()
   local now = time()
 
   palt(0, false)
-  rectfill(0,0,128,128,0)
+  rectfill(0,0,128,128,12)
   rectfill(0,0,128,32,0)
   if player.map_x > 64 and player.map_x < map_extent - 64 then
     for i=0,1 do
@@ -351,12 +392,6 @@ function game_draw()
             current_x += 8
           end
         end
-        if projectile.direction == 0 then
-          x0, x1 = projectile.tail_x, projectile.head_x + 10
-        else
-          x0, x1 = projectile.head_x, projectile.tail_x
-        end
-        rect(x0, projectile.top_y, x1, projectile.bottom_y, 11)
       end
   end)
 
@@ -403,10 +438,6 @@ function game_draw()
     spr(impact.spr, impact.x, impact.y)
   end)
 
-  foreach(fx.popups, function(popup) 
-    print(popup.msg, popup.x, popup.y,popup.color)
-  end)
-
   foreach(fx.arrows, function(arrow) 
     spr(
       level.direction == 0 and 14 or 30,
@@ -415,6 +446,16 @@ function game_draw()
       2,
       1
     )
+  end)
+
+  foreach(fx.popups, function(popup) 
+    if popup.frames != nil then
+      if (popup.since_last_frame * 100) % 2 != 0 then
+        spr(popup.frames[popup.frame_index], popup.x, popup.y)
+      end
+    else
+      print(popup.msg, popup.x, popup.y,popup.color)
+    end
   end)
 
   pal()
@@ -593,14 +634,14 @@ ffff88882fffffffffff888888fffffffc595466cfffffffffff888888ffffff0000000000000000
 ffff88ff22ffffffffff88ff88ffffffffc5966cffffffffffff88ff88ffffff0000000000000000000000000000000000000000000000000000000000000000
 fff00fff00fffffffff00ffff00ffffffffccccffffffffffff00ffff00fffff0000000000000000000000000000000000000000000000000000000000000000
 ff000fff000fffffff000ffff000ffffffffffffffffffffff000ffff000ffff0000000000000000000000000000000000000000000000000000000000000000
-f444444ff444444ffffff444444ffffffff3ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ff994444ff994444ffffff994444ffffff3b3fff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-f9c94444f9c94444fffff9c94444fffff3b3b3ff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-9999494499994944ffff99994944ffff33b3b33f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-f4444944f4444944fffff4444944ffff3b333b3f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ff44444fff44444fffffff84444ffffff3b3b3ff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-ff4498ffff4488ffffffff4498ffffffff333fff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-f0899808f998088fffff808998808ffffff3ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+f444444ff444444ffffff444444ffffffff3fffffff33ffffff3fffffff33fff0000000000000000000000000000000000000000000000000000000000000000
+ff994444ff994444ffffff994444ffffff3b3fffff3b33ffff333fffff33b3ff0000000000000000000000000000000000000000000000000000000000000000
+f9c94444f9c94444fffff9c94444fffff3b3b3fff3b3bb3ff3b3b3fff3bb3b3f0000000000000000000000000000000000000000000000000000000000000000
+9999494499994944ffff99994944ffff33b3b33f333333b33b333b3f3b3333330000000000000000000000000000000000000000000000000000000000000000
+f4444944f4444944fffff4444944ffff3b333b3ff3b3bb3f33b3b33ff3bb3b3f0000000000000000000000000000000000000000000000000000000000000000
+ff44444fff44444fffffff84444ffffff3b3b3ffff3b33fff3b3b3ffff33b3ff0000000000000000000000000000000000000000000000000000000000000000
+ff4498ffff4488ffffffff4498ffffffff333ffffff33fffff3b3ffffff33fff0000000000000000000000000000000000000000000000000000000000000000
+f0899808f998088fffff808998808ffffff3fffffffffffffff3ffffffffffff0000000000000000000000000000000000000000000000000000000000000000
 92088809f998088ffff88088888088ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 ff00000fff00000ffff99f00000f99ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 f228888ff228888ffff99888888f99ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
