@@ -220,126 +220,80 @@ bmgr = {
   end,
 }
 
-function new_tree(direction, start_x)
+function new_basic_baddie(direction, height, width, x, y, frames, frame_wait)
   local baddie = {
-    type = "tree",
     direction = direction,
-    x = start_x,
+    x = x,
     vx = direction == 0 and -1.4 or 1.4,
-    y = 81,
-    height = 2,
-    width = 1,
-    frames_walk = {65,66},
-    frames_threat = {67,68},
+    y = y,
+    height = height,
+    width = width,
+    frames_walk = frames,
     frame_index = 1,
-    frame_wait = 0.2,
+    frame_wait = frame_wait,
     since_last_frame = 0,
     frames_current = nil,
     update = basic_baddie_update,
     draw = basic_baddie_draw,
-    getBB = function(b)
-      if b.direction == 0 then
-        return {b.x-1,80,b.x+5,96} -- face left
-      else
-        return {b.x+2,80,b.x+8,96} -- face right
-      end
-    end,
-    getFrontBB = function(b)
-      if b.direction == 0 then
-        return { b.x - 1,80,b.x+3,96 } -- face left
-      else
-        return  { b.x + 4,80,b.x+8,96 } -- face right
-      end
-    end,
   }
   baddie.frames_current = baddie.frames_walk
   return baddie
 end
+-- pass in: direction, h/w, y, frames, frame_wait
+function new_tree(direction, start_x)
+  local baddie = new_basic_baddie(direction, 2, 1, start_x, 81, {65,66},0.2)
+  baddie.type="tree"
+  baddie.getBB = function(b)
+    if b.direction == 0 then
+      return {b.x-1,80,b.x+5,96} -- face left
+    else
+      return {b.x+2,80,b.x+8,96} -- face right
+    end
+  end
+  baddie.getFrontBB = function(b)
+    if b.direction == 0 then
+      return { b.x - 1,80,b.x+3,96 } -- face left
+    else
+      return  { b.x + 4,80,b.x+8,96 } -- face right
+    end
+  end
+  return baddie
+end
+
+function small_bb(b)
+  local offset = 0
+  if b.direction == 0 then
+    offset = -1 -- facing left
+  end
+  return {b.x - offset,b.y,b.x+8 - offset,b.y+8}
+end
+
+function small_front_bb(b)
+  local offset = 0
+  if b.direction == 1 then
+    offset = 5 -- facing right
+  end
+  return { b.x + offset,b.y+5,b.x+3 + offset,b.y+8 }
+end
 
 function new_flower(direction, start_x)
-  local baddie = {
-    direction = direction,
-    x = start_x,
-    vx = direction == 0 and -1.4 or 1.4,
-    y = 89,
-    height = 1,
-    width = 1,
-    type = "flower",
-    frames_walk = {85,86,87,88},
-    frames_threat = {67,68},
-    frame_index = 1,
-    frame_wait = 0.05,
-    since_last_frame = 0,
-    frames_current = nil,
-    update = basic_baddie_update,
-    draw = basic_baddie_draw,
-    getBB = function(b)
-      if b.direction == 0 then
-        return {b.x-1,b.y,b.x+7,b.y+8} -- facing left
-      else
-        return {b.x,b.y,b.x+8,b.y+8} -- facing right
-      end
-    end,
-    getFrontBB = function(b)
-      if b.direction == 0 then
-        return { b.x - 1,b.y+5,b.x+3,b.y+8 } -- face left
-      else
-        return { b.x + 4,b.y+5,b.x+8,b.y+8 } -- face right
-      end
-    end,
-  }
-  baddie.frames_current = baddie.frames_walk
+  local baddie = new_basic_baddie(direction, 1, 1, start_x, 89, {85,86,87,88},0.05)
+  baddie.type = "flower"
+  baddie.getBB = small_bb
+  baddie.getFrontBB = small_front_bb
   return baddie
 end
 
 function new_projectile(direction, start_x, start_y)
-  local projectile = {
-    direction = direction,
-    x = start_x,
-    vx = direction == 0 and -1.8 or 1.8,
-    y = start_y,
-    type = "apple",
-    state_t = 1,
-    since_last_state = 0,
-    frames_default = {97,98,99,100},
-    frame_index = 1,
-    frame_wait = 0.05,
-    since_last_frame = 0,
-    frames_current = nil,
-    update = function(p,dt,vx)
-      if p.state == "default" then
-        p:update_default(dt)
-      end
-
-      p.x += p.vx - vx
-
-      p.since_last_frame += dt
-      if p.since_last_frame > p.frame_wait then
-        p.frame_index += 1
-        p.since_last_frame = 0
-        if p.frame_index > #p.frames_current then
-          p.frame_index = 1
-        end
-      end
-    end,
-    draw = function(p)
-      local face_left = p.direction == 0
-      spr(p.frames_current[p.frame_index],face_left and p.x or p.x,p.y,1,1,(face_left and true or false),false)
-      -- draw bounding box
-      -- local x0, y0, x1, y1 = p:getBB()
-      -- rect(x0, y0, x1, y1,13)
-    end,
-    getBB = function(p)
-      return { p.x+2,p.y+2,p.x+6,p.y+6 }
-    end,
-    update_default = function(p, dt)
-      p.since_last_state += dt
-      p.x += p.vx
-    end,
-  }
-  projectile.frames_current = projectile.frames_default
-  return projectile
-
+  local proj = new_basic_baddie(direction, 1, 1, start_x, start_y, {97,98,99,100},0.05)
+  proj.type = "apple"
+  proj.vx = direction == 0 and -1.8 or 1.8
+  proj.update = basic_baddie_update
+  proj.draw = basic_baddie_draw
+  proj.getBB = function(p)
+    return { p.x+2,p.y+2,p.x+6,p.y+6 }
+  end
+  return proj
 end
 
 function new_boss(direction, start_x, difficulty)
@@ -355,12 +309,14 @@ function new_boss(direction, start_x, difficulty)
     state = "wait",
     since_last_state = 0,
     invincible = 0,
-    frames_wait = {73},
-    frames_walk = {73,75},
-    frames_upantic = {77},
-    frames_downantic = {107},
-    frames_upthrow = {105},
-    frames_downthrow = {109},
+    frames = {
+      wait = {73},
+      walk = {73,75},
+      upantic = {77},
+      downantic = {107},
+      upthrow = {105},
+      downthrow = {109},
+    },
     frame_index = 1,
     frame_wait = 0.1,
     since_last_frame = 0,
@@ -389,7 +345,7 @@ function new_boss(direction, start_x, difficulty)
         return
       end
 
-      -- do nothing!
+      -- do frame updates
       b.since_last_frame += dt
       if b.since_last_frame > b.frame_wait then
         b.frame_index += 1
@@ -430,53 +386,46 @@ function new_boss(direction, start_x, difficulty)
         if chance_to_throw > b.throw_threshold then
           local up_or_down = rnd()
           if up_or_down > 0.5 then
-            b.state = "upantic"
-            b.frames_current = b.frames_upantic
+            b:change_state("upantic")
+            -- b.frames_current = b.frames_upantic
           else
-            b.state = "downantic"
-            b.frames_current = b.frames_downantic
+            b:change_state("downantic")
+            -- b.frames_current = b.frames_downantic
           end
-          b.since_last_state = 0
-          b.frame_index = 1
         end
       end
+    end,
+    change_state = function(b, s)
+      b.state = s
+      b.since_last_state = 0
+      b.frames_current = b.frames[s]
+      -- b.state_ttl = p.timings[s]
+      b.frame_index = 1
     end,
     update_upantic = function(b, dt, x_antic)
       b.since_last_state += dt
       if b.since_last_state > b.state_t then
-        b.state = "upthrow"
-        b.since_last_state = 0
-        b.frames_current = b.frames_upthrow
-        b.frame_index = 1
         add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_antic), 82))
+        b:change_state("upthrow")
       end
     end,
     update_upthrow = function(b, dt)
       b.since_last_state += dt
       if b.since_last_state > 1 then
-        b.state = "wait"
-        b.since_last_state = 0
-        b.frames_current = b.frames_wait
-        b.frame_index = 1
+        b:change_state("wait")
       end
     end,
     update_downantic = function(b, dt, x_offset)
       b.since_last_state += dt
       if b.since_last_state > b.state_t then
-        b.state = "downthrow"
-        b.since_last_state = 0
-        b.frames_current = b.frames_downthrow
-        b.frame_index = 1
         add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_offset), 88))
+        b:change_state("downthrow")
       end
     end,
     update_downthrow = function(b, dt)
       b.since_last_state += dt
       if b.since_last_state > 1 then
-        b.state = "wait"
-        b.since_last_state = 0
-        b.frames_current = b.frames_wait
-        b.frame_index = 1
+        b:change_state("wait")
       end
     end,
     update_walk = function(b, dt)
@@ -484,48 +433,19 @@ function new_boss(direction, start_x, difficulty)
       b.x += b.vx 
 
       if b.since_last_state > b.state_t then
-        b.state = "wait"
-        b.frames_current = b.frames_wait
-        b.frame_index = 1
+        b:change_state("wait")
       end
     end,
   }
-  boss.frames_current = boss.frames_wait
+  boss.frames_current = boss.frames["wait"]
   return boss
 end
 
 function new_wisp(direction, start_x)
-  local baddie = {
-    type = "wisp",
-    direction = direction,
-    x = start_x,
-    vx = direction == 0 and -1.4 or 1.4,
-    y = 82,
-    height = 1,
-    width = 1,
-    frames_walk = {69,70,71},
-    frame_index = 1,
-    frame_wait = 0.1,
-    since_last_frame = 0,
-    frames_current = nil,
-    update = basic_baddie_update,
-    draw = basic_baddie_draw,
-    getBB = function(b)
-      if b.direction == 0 then
-        return {b.x-1,b.y,b.x+7,b.y+8} -- face left
-      else
-        return {b.x,b.y,b.x+8,b.y+8} -- face right
-      end
-    end,
-    getFrontBB = function(b)
-      if b.direction == 0 then
-        return {b.x - 1,b.y+5,b.x+3,b.y+8} -- face left
-      else
-        return {b.x + 4,b.y+5,b.x+8,b.y+8} -- face right
-      end
-    end,
-  }
-  baddie.frames_current = baddie.frames_walk
+  local baddie = new_basic_baddie(direction, 1, 1, start_x, 82, {69,70,71},0.1)
+  baddie.type = "wisp"
+  baddie.getBB = small_bb
+  baddie.getFrontBB = small_front_bb
   return baddie
 end
 
@@ -574,10 +494,12 @@ end
 
 function basic_baddie_draw(b)
       -- draw bounding box
-      -- local x0, y0, x1, y1 = b:getBB()
-      -- rect(x0, y0, x1, y1,13)
-      -- local x0, y0, x1, y1 = b:getFrontBB()
-      -- rect(x0, y0, x1, y1,8)
+      local bb = b:getBB()
+      rect(bb[1], bb[2], bb[3], bb[4],13)
+      if b.getFrontBB != nil then
+        bb = b:getFrontBB()
+        rect(bb[1], bb[2], bb[3], bb[4],8)
+      end
   local face_left = b.direction == 0
   spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,b.width,b.height,(face_left and true or false),false)
 end

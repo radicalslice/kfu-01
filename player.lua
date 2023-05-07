@@ -59,7 +59,7 @@ player = {
     p.score = p.last_score
     p.state_ttl = 0
     p.health = 100
-    p.od = 0
+    p.od = 9
     p.mash_count = 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = 96
@@ -400,6 +400,7 @@ player_state_funcs = {
 
     if p.since_last_state > p.state_ttl then
       p:change_state("punch_od")
+      sfx(8)
     end
   end,
   kantic = function(p, dt)
@@ -414,6 +415,7 @@ player_state_funcs = {
 
     if p.since_last_state > p.state_ttl then
       p:change_state("kick_od")
+      sfx(8)
     end
   end,
   punch = function(p, dt)
@@ -517,6 +519,7 @@ player_state_funcs = {
     if p.since_last_state > p.state_ttl then
       p:set_draw_x((p.direction == 0 and p.draw_x-4 or p.draw_x-4))
       p:change_state("ckick_od")
+      sfx(8)
     end
   end,
   cpunch = function(p, dt)
