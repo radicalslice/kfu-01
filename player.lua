@@ -30,6 +30,7 @@ player = {
     unmash = 0.2,
     walk = 1,
     stand = 1,
+    victory = 1,
   },
   frames = {
     walk = {4,3,4,2},
@@ -51,6 +52,7 @@ player = {
     ckick_od = {226},
     dead = {38},
     unmash = {198},
+    victory = {200},
   },
   reset = function(p, level_direction, freeze_mask)
     p.frames_current = p.frames["stand"]
@@ -62,7 +64,7 @@ player = {
     p.od = 9
     p.mash_count = 0
     p.since_last_frame, p.since_last_state = 0, 0
-    p.draw_x = 96
+    p.draw_x = level_direction == 0 and map_extent - 16 or 16
     p.draw_y = p_draw_y_stand
     p.direction = level_direction
     p.map_x = level_direction == 0 and map_extent - 16 or 16
@@ -85,8 +87,7 @@ player = {
   set_draw_x = function(p, x)
     p.draw_x = x
   end,
-  update = function(p, dt)
-
+  update = function(p, dt, bm, bmp) -- btn(), btnp()
     -- allowed       button       allowed'
     --      1           1|0            1
     --      0            1             0
@@ -97,7 +98,7 @@ player = {
       -- 111100
       if player.allowed_inputs & (1 << i) == 0 then
         -- input currently not allowed
-        if not btn(i) then
+        if not read_bm(bm, i) then
           player.allowed_inputs |= (1 << i)
         end
       end
@@ -119,7 +120,7 @@ player = {
       "ckantic_od",
       "ckick_od",
     }
-    if btnp(2) and p.od > 0 and not exists(p.state, od_states) then
+    if read_bm(bmp, 2) and p.od > 0 and not exists(p.state, od_states) then
       p.overdrive_on = not p.overdrive_on
     end
 
@@ -135,7 +136,7 @@ player = {
     end
 
     -- do state update
-    player_state_funcs[p.state](p, dt)
+    player_state_funcs[p.state](p, dt, bm, bmp)
     p.since_last_frame += dt
 
     if p.since_last_frame > p.frame_wait then
@@ -281,11 +282,11 @@ player = {
   add_od = function(p, amount)
     p.od = min(p.od + amount, 9)
   end,
-  get_hinted_vx = function(p)
+  get_hinted_vx = function(p, bm)
     if p.state == "walk" and player.draw_x >= 63 and player.draw_x <= 65 then
-      if btn(1) then
+      if read_bm(bm, 1) then
         return 1
-      elseif btn(0) then
+      elseif read_bm(bm, 0) then
         return -1
       end
     end
@@ -294,7 +295,7 @@ player = {
 }
 
 player_state_funcs = {
-  stand = function(p)
+  stand = function(p, dt, bm)
     if p.map_x < 64 then
       p:set_draw_x(max(0,p.map_x))
     elseif p.map_x > (map_extent - 64) then
@@ -302,7 +303,7 @@ player_state_funcs = {
     else
       p:set_draw_x(64)
     end
-    local filtered = btn() & p.allowed_inputs
+    local filtered = bm & p.allowed_inputs
     if filtered & (1 << 4) > 0 then
       -- Shift a 1 to the fourth position:
       -- 010000 -> 101111
@@ -336,13 +337,13 @@ player_state_funcs = {
     elseif filtered & (1 << 1) > 0 then
       p.direction = 1
       p:change_state("walk")
-    elseif btn(3) then
+    elseif read_bm(bm, 3) then
       p:change_state("crouch")
       p.draw_y = p_draw_y_crouch
       return
     end
   end,
-  walk = function(p)
+  walk = function(p, dt, bm)
     if p.map_x < 64 then
       p:set_draw_x(max(0,p.map_x))
     elseif p.map_x > (map_extent - 64) then
@@ -351,19 +352,19 @@ player_state_funcs = {
       p:set_draw_x(64)
     end
 
-    if not btn(0) and not btn(1) then
+    if not read_bm(bm, 0) and not read_bm(bm, 1) then
       p:change_state("stand")
-    elseif btn(0) and p.map_x > 0 then
+    elseif read_bm(bm, 0) and p.map_x > 0 then
       p.direction = 0 
       p.map_x -= p.blocked != true and 1 or 0
       p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and -1 or 0
-    elseif btn(1) and p.map_x < (map_extent - 8) then
+    elseif read_bm(bm, 1) and p.map_x < (map_extent - 8) then
       p.direction = 1
       p.map_x += p.blocked != true and 1 or 0
       p.vx = (player.draw_x >= 63 and player.draw_x <= 65) and 1 or 0
     end
 
-    local filtered = btn() & p.allowed_inputs
+    local filtered = bm & p.allowed_inputs
     if filtered & (1 << 4) > 0 then
       p.allowed_inputs &= ~(1 << 4)
       if p.overdrive_on then
@@ -466,8 +467,8 @@ player_state_funcs = {
     end
   end,
 
-  crouch = function(p, dt)
-    local filtered = btn() & p.allowed_inputs
+  crouch = function(p, dt, bm)
+    local filtered = bm & p.allowed_inputs
     if filtered & (1 << 4) > 0 then
       p.allowed_inputs &= ~(1 << 4)
       if p.overdrive_on then
@@ -488,14 +489,14 @@ player_state_funcs = {
       end
       sfx(0)
     end
-    if not btn(3) then
+    if not read_bm(bm, 3) then
       p:change_state("stand")
       p.draw_y = p_draw_y_stand
     end
-    if btn(0) then
+    if read_bm(bm, 0) then
       p.direction = 0
     end
-    if btn(1) then
+    if read_bm(bm, 1) then
       p.direction = 1
     end
   end,
@@ -555,13 +556,13 @@ player_state_funcs = {
       add(player_projectiles, {head_x=start_x_1, tail_x=start_x_1, direction=1,top_y=p.draw_y+7,bottom_y=p.draw_y+10,ttl=p.timings.punch_od + 0.01,t="kick"})
     end
   end,
-  dead = function(p, dt)
+  dead = function(p, dt, bm)
     p.draw_x += p.vx
     p.draw_y += p.vy
     p.vx *= 0.8
     p.vy = min(p.vy + 0.5, 10)
   end,
-  hugged = function(p, dt)
+  hugged = function(p, dt, bm, bmp)
     -- deduct some health in here
     if p.state != "stand" and p.state != "crouch" and p.state != "hugged" then
       return
@@ -574,23 +575,23 @@ player_state_funcs = {
       return
     end
 
-    if btn(0) then
+    if read_bm(bm, 0) then
       p.direction = 0
-    elseif btn(1) then
+    elseif read_bm(bm, 1) then
       p.direction = 1
     end
 
-    if btn(3) and p.frames_current == p.frames["stand"] then
+    if read_bm(bm, 3) and p.frames_current == p.frames["stand"] then
       p.draw_y = p_draw_y_crouch
       p.frames_current = p.frames["crouch"]
       return
-    elseif not btn(3) and p.frames_current == p.frames["crouch"] then
+    elseif not read_bm(bm, 3) and p.frames_current == p.frames["crouch"] then
       p.frames_current = p.frames["stand"]
       p.draw_y = p_draw_y_stand
       return
     end
 
-    local filtered = btnp() & p.allowed_inputs
+    local filtered = bmp & p.allowed_inputs
     if filtered & (1 << 4) > 0 then
       p.mash_count += 1
       -- 101111 = 47
@@ -615,4 +616,11 @@ player_state_funcs = {
       p:change_state("stand")
     end
   end,
+  victory = function(p, dt)
+  end,
 }
+
+-- simulating btn / btnp
+function read_bm(bm, idx)
+  return (bm & (1 << idx)) > 0
+end

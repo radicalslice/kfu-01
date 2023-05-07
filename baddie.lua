@@ -122,7 +122,7 @@ bmgr = {
       if should_back_up > 0.92 and dist_to_edge >= 16 then
         bm.boss.state = "walk"
         bm.boss.state_t = 0.5
-        bm.boss.frames_current = bm.boss.frames_walk
+        bm.boss.frames_current = bm.boss.frames.walk
         bm.boss.frame_index = 1
         bm.boss.since_last_state = 0
         bm.boss.vx = (bm.boss.direction == 0) and 1 or -1
@@ -396,6 +396,7 @@ function new_boss(direction, start_x, difficulty)
       end
     end,
     change_state = function(b, s)
+      printh("change boss state:"..s)
       b.state = s
       b.since_last_state = 0
       b.frames_current = b.frames[s]
