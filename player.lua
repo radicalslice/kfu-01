@@ -82,12 +82,12 @@ player = {
     p.frames_current = p.frames[s]
     p.state_ttl = p.timings[s]
     p.frame_index = 1
-
   end,
   set_draw_x = function(p, x)
     p.draw_x = x
   end,
   update = function(p, dt, bm, bmp) -- btn(), btnp()
+    p.since_last_state += dt
     -- allowed       button       allowed'
     --      1           1|0            1
     --      0            1             0
@@ -390,48 +390,37 @@ player_state_funcs = {
     end
   end,
   pantic = function(p, dt)
-    p.since_last_state += dt
-
     if p.since_last_state > p.state_ttl then
       p:change_state("punch")
     end
   end,
   pantic_od = function(p, dt)
-    p.since_last_state += dt
-
     if p.since_last_state > p.state_ttl then
       p:change_state("punch_od")
       sfx(8)
     end
   end,
   kantic = function(p, dt)
-    p.since_last_state += dt
-
     if p.since_last_state > p.state_ttl then
       p:change_state("kick")
     end
   end,
   kantic_od = function(p, dt)
-    p.since_last_state += dt
-
     if p.since_last_state > p.state_ttl then
       p:change_state("kick_od")
       sfx(8)
     end
   end,
   punch = function(p, dt)
-    p.since_last_state += dt
-
     if p.since_last_state > p.state_ttl then
       p:change_state("stand")
     end
   end,
   punch_od = function(p, dt)
 
-    p.since_last_state += dt
-
     if p.since_last_state > p.state_ttl then
       -- p.draw_x += (p.direction == 0 and 2 or 6)
+      -- p:set_draw_x(p.direction == 0 and p.draw_x + 2 or p.draw_x + 6)
       p:set_draw_x(p.direction == 0 and p.draw_x + 2 or p.draw_x + 6)
       p:change_state("stand")
     end
@@ -439,19 +428,16 @@ player_state_funcs = {
     -- spawn projectile here...
     if #player_projectiles == 0 then
       local start_x = (p.direction == 0 and p.draw_x-8 or p.draw_x + 16)
-      add(player_projectiles, {head_x=start_x, tail_x=start_x, direction=p.direction,top_y=p.draw_y+5,bottom_y=p.draw_y+13,ttl=p.timings.punch_od + 0.01,t="punch"})
+      add_projectile(start_x,start_x,p.direction,p.draw_y+5,p.draw_y+13,p.timings.punch_od + 0.01,"punch")
     end
   end,
   kick = function(p, dt)
-
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("stand")
     end
   end,
   kick_od = function(p, dt)
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:set_draw_x(p.direction == 0 and p.draw_x+2 or p.draw_x+6)
@@ -460,10 +446,13 @@ player_state_funcs = {
 
     -- spawn projectile here...
     if #player_projectiles == 0 then
-      local start_x_0 = (p.direction == 0 and p.draw_x-7 or p.draw_x - 5)
-      local start_x_1 = (p.direction == 0 and p.draw_x+13 or p.draw_x + 15)
-      add(player_projectiles, {head_x=start_x_0, tail_x=start_x_0, direction=0,top_y=p.draw_y+5,bottom_y=p.draw_y+8,ttl=p.timings.punch_od + 0.01,t="kick"})
-      add(player_projectiles, {head_x=start_x_1, tail_x=start_x_1, direction=1,top_y=p.draw_y+5,bottom_y=p.draw_y+8,ttl=p.timings.punch_od + 0.01,t="kick"})
+      local start_x = {
+        (p.direction == 0 and p.draw_x-7 or p.draw_x-5),
+        (p.direction == 0 and p.draw_x+13 or p.draw_x + 15),
+      }
+      for i=1,2 do
+        add_projectile(start_x[i], start_x[i], (i == 1 and 0 or 1),p.draw_y+5,p.draw_y+8,p.timings.punch_od + 0.01,"kick")
+      end
     end
   end,
 
@@ -501,21 +490,18 @@ player_state_funcs = {
     end
   end,
   cpantic = function(p, dt)
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("cpunch")
     end
   end,
   ckantic = function(p, dt)
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("ckick")
     end
   end,
   ckantic_od = function(p, dt)
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:set_draw_x((p.direction == 0 and p.draw_x-4 or p.draw_x-4))
@@ -525,7 +511,6 @@ player_state_funcs = {
   end,
   cpunch = function(p, dt)
 
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("crouch")
@@ -533,7 +518,6 @@ player_state_funcs = {
   end,
   ckick = function(p, dt)
 
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:change_state("crouch")
@@ -541,7 +525,6 @@ player_state_funcs = {
   end,
   ckick_od = function(p, dt)
 
-    p.since_last_state += dt
 
     if p.since_last_state > p.state_ttl then
       p:set_draw_x((p.direction == 0 and p.draw_x + 4 or p.draw_x + 4))
@@ -550,10 +533,13 @@ player_state_funcs = {
 
     -- spawn projectile here...
     if #player_projectiles == 0 then
-      local start_x_0 = (p.direction == 0 and p.draw_x-5 or p.draw_x - 6)
-      local start_x_1 = (p.direction == 0 and p.draw_x+14 or p.draw_x + 13)
-      add(player_projectiles, {head_x=start_x_0, tail_x=start_x_0, direction=0,top_y=p.draw_y+7,bottom_y=p.draw_y+10,ttl=p.timings.punch_od + 0.01,t="kick"})
-      add(player_projectiles, {head_x=start_x_1, tail_x=start_x_1, direction=1,top_y=p.draw_y+7,bottom_y=p.draw_y+10,ttl=p.timings.punch_od + 0.01,t="kick"})
+      local start_x = {
+        (p.direction == 0 and p.draw_x-5 or p.draw_x - 6),
+        (p.direction == 0 and p.draw_x+14 or p.draw_x + 13),
+      }
+      for i=1,2 do
+        add_projectile(start_x[i], start_x[i], (i == 1 and 0 or 1),p.draw_y+7,p.draw_y+10,p.timings.punch_od + 0.01,"kick")
+      end
     end
   end,
   dead = function(p, dt, bm)
@@ -611,7 +597,6 @@ player_state_funcs = {
     end
   end,
   unmash = function(p, dt)
-    p.since_last_state += dt
     if p.since_last_state > p.state_ttl then
       p:change_state("stand")
     end
@@ -623,4 +608,8 @@ player_state_funcs = {
 -- simulating btn / btnp
 function read_bm(bm, idx)
   return (bm & (1 << idx)) > 0
+end
+
+function add_projectile(hx,tx,dir,topy,boty,ttl,typ)
+  add(player_projectiles, {head_x=hx, tail_x=tx, direction=dir,top_y=topy,bottom_y=boty,ttl=ttl,t=typ})
 end

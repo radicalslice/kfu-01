@@ -224,8 +224,8 @@ function new_basic_baddie(direction, height, width, x, y, frames, frame_wait)
   local baddie = {
     direction = direction,
     x = x,
-    vx = direction == 0 and -1.4 or 1.4,
     y = y,
+    vx = direction == 0 and -1.4 or 1.4,
     height = height,
     width = width,
     frames_walk = frames,

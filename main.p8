@@ -59,19 +59,15 @@ function game_init()
       __draw = game_draw
     end
   })
-  music(4)
+  -- music(4)
 end
 
 function _init()
   printh("cart init")
   last_ts = 0
-  --[[
   __update = title_update
   __draw = title_draw
-  ]]--
-  victory_init()
-  __update = victory_update
-  __draw = victory_draw
+  -- victory_init()
 end
 
 function _draw()
@@ -321,8 +317,9 @@ function game_update()
   if is_level_end(player.map_x, level.direction) then
     level_index += 1
     if level_index > #levels then -- display victory msg
-      __update = victory_update
-      __draw = victory_draw
+      -- __update = victory_update
+      -- __draw = victory_draw
+      fade_init()
       return
     end
     -- load new level
@@ -349,29 +346,100 @@ function game_update()
   end
 end
 
+function timers_only()
+  local now = time()
+  local dt = now - last_ts
+  last_ts = now
+  handle_timers(timers, dt)
+end
+
+function fade_draw(seq)
+  return function()
+    cls()
+
+    for i=0,15 do
+      pal(i, 0)
+    end
+
+    if #seq == 4 then
+      pal(seq[1], seq[2])
+      pal(seq[3], seq[4])
+    end
+
+    game_draw()
+
+  end
+end
+
+function fade_init()
+
+  __update = timers_only
+
+  add(timers, {remaining=0.5, callback=function()
+      -- __draw = victory_draw({9,0,12,2})
+      __draw = fade_draw({9,4,12,13})
+    end
+  })
+
+  add(timers, {remaining=1, callback=function()
+      __draw = fade_draw({9,0,12,13})
+    end
+  })
+
+  add(timers, {remaining=1.5, callback=function()
+      __draw = fade_draw({})
+      victory_init()
+    end
+  })
+end
+
 function victory_init()
-  player:reset(1,FREEZE_NONE)
+
+  -- player:reset(1,FREEZE_NONE)
   player:change_state("walk")
   player.map_x = -4
   player.draw_x = -4
   player.dx = 4
   player.y = 80
   player.invincible = 0
-  last_ts = 0
+
+  __update = victory_update
+
+  __draw = victory_draw({9,0,12,2})
+
+  add(timers, {remaining=1, callback=function()
+      __draw = victory_draw({9,4,12,13})
+    end
+  })
+  add(timers, {remaining=1.5, callback=function()
+      __draw = victory_draw({})
+    end
+  })
 end
 
-function victory_draw()
-  cls()
-  rectfill(0,0,128,128,12)
-  palt(0, false)
-  map(0,14,0,96,16,16)
-  print("victory", 40, 64, 7)
-  palt(15,true)
-  spr(228, 46, 72) 
-  print("X"..player.score, 54, 74, 11)
-  local now = time()
-  player:draw(now)
-  pal()
+function victory_draw(seq)
+  return function()
+    cls()
+    -- fade-y bits
+    if #seq > 1 then
+      for i=0,15 do
+        pal(i, 0)
+      end
+      pal(seq[1], seq[2])
+      pal(seq[3], seq[4])
+    end
+
+    rectfill(0,0,128,128,12)
+    palt(0, false)
+    map(0,14,0,96,16,16)
+    print("victory", 52, 32, 7)
+    palt(15,true)
+    spr(228, 57, 40) 
+    print("X"..player.score, 66, 42, 7)
+    local now = time()
+    player:draw(now)
+    pal()
+  end
 end
 
 function victory_update()
