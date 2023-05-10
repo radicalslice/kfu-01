@@ -496,10 +496,10 @@ end
 function basic_baddie_draw(b)
       -- draw bounding box
       local bb = b:getBB()
-      rect(bb[1], bb[2], bb[3], bb[4],13)
+      -- rect(bb[1], bb[2], bb[3], bb[4],13)
       if b.getFrontBB != nil then
-        bb = b:getFrontBB()
-        rect(bb[1], bb[2], bb[3], bb[4],8)
+        -- bb = b:getFrontBB()
+        -- rect(bb[1], bb[2], bb[3], bb[4],8)
       end
   local face_left = b.direction == 0
   spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,b.width,b.height,(face_left and true or false),false)

@@ -61,7 +61,7 @@ player = {
     p.score = p.last_score
     p.state_ttl = 0
     p.health = 100
-    p.od = 9
+    p.od = 0
     p.mash_count = 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = level_direction == 0 and map_extent - 16 or 16
@@ -592,12 +592,18 @@ player_state_funcs = {
       bmgr:kill_huggers()
       p.mash_count = 0
       p.draw_y = p_draw_y_stand
+      if p.direction == 1 then
+        p.draw_x -= 3
+      end
       sfx(6)
       return
     end
   end,
   unmash = function(p, dt)
     if p.since_last_state > p.state_ttl then
+      if p.direction == 1 then
+        p.draw_x += 3
+      end
       p:change_state("stand")
     end
   end,

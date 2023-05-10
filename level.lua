@@ -5,13 +5,11 @@ levels = {
     batches = "300:3t:1;250:1t:0;240:2t:1;200:1t:1;195:1t:0;130:2t:1;125:2t:0",
     boss = 70,
   },
-  --[[
   {
     direction = 1,
     batches = "40:1f:0;80:1t1f:0;115:1f:1;125:1f:0;160:1w:0;200:1t1w:1;210:1f:0;240:1t1f1w:1;265:1f1w1f1w:0",
     boss = map_extent - 80
   },
-  --]]
 }
 
 function parse_batches(str)
