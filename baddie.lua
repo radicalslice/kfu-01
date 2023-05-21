@@ -21,7 +21,7 @@ bmgr = {
       add(bm.bits, new_bit(bit,
       x,
       y,
-      (direction == 0 and 3 or -3) + (rnd(2) - 1),
+      (direction == 0 and 8 or -8) + (rnd(2) - 1),
       -3 + (rnd(2) - 1),
       direction)
       )
@@ -200,11 +200,11 @@ bmgr = {
     local start_x = direction == 0 and 132 or -4
     foreach(btypes, function(btype)
       local baddie = nil
-      if btype == "tree" then
+      if btype == "t" then
         baddie = new_tree(direction, start_x)
-      elseif btype == "flower" then
+      elseif btype == "f" then
         baddie = new_flower(direction, start_x)
-      elseif btype == "wisp" then
+      elseif btype == "w" then
         baddie = new_wisp(direction, start_x)
       else
         printh("unkown baddie type: "..btype)
@@ -329,6 +329,7 @@ function new_boss(direction, start_x, difficulty)
         b.invincible = 0
       end
 
+      b.since_last_state += dt
       if b.state == "walk" then
         b:update_walk(dt)
       elseif b.state == "wait" then
@@ -380,7 +381,6 @@ function new_boss(direction, start_x, difficulty)
         return { b:getDrawX(x_offset),b.y,b:getDrawX(x_offset)+16,b.y+16 }
     end,
     update_wait = function(b, dt)
-      b.since_last_state += dt
       if b.since_last_state > b.state_t then
         local chance_to_throw = rnd()
         if chance_to_throw > b.throw_threshold then
@@ -396,7 +396,6 @@ function new_boss(direction, start_x, difficulty)
       end
     end,
     change_state = function(b, s)
-      printh("change boss state:"..s)
       b.state = s
       b.since_last_state = 0
       b.frames_current = b.frames[s]
@@ -404,33 +403,28 @@ function new_boss(direction, start_x, difficulty)
       b.frame_index = 1
     end,
     update_upantic = function(b, dt, x_antic)
-      b.since_last_state += dt
       if b.since_last_state > b.state_t then
         add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_antic), 82))
         b:change_state("upthrow")
       end
     end,
     update_upthrow = function(b, dt)
-      b.since_last_state += dt
       if b.since_last_state > 1 then
         b:change_state("wait")
       end
     end,
     update_downantic = function(b, dt, x_offset)
-      b.since_last_state += dt
       if b.since_last_state > b.state_t then
         add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_offset), 88))
         b:change_state("downthrow")
       end
     end,
     update_downthrow = function(b, dt)
-      b.since_last_state += dt
       if b.since_last_state > 1 then
         b:change_state("wait")
       end
     end,
     update_walk = function(b, dt)
-      b.since_last_state += dt
       b.x += b.vx 
 
       if b.since_last_state > b.state_t then
@@ -462,7 +456,7 @@ function new_bit(sprnum, x, y, vx, vy, direction)
     update = function(b,dt)
       b.x += b.vx
       b.y += b.vy
-      b.vx *= 0.8
+      b.vx *= 0.90
       b.vy = min(b.vy + 0.5, 10)
       b.ttl -= dt
     end,

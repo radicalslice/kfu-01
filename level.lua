@@ -35,13 +35,7 @@ function parse_batches(str)
       local baddie_count = tonum(sub(vals[2], i, i))
       local baddie_code = sub(vals[2], i+1, i+1)
       for j=1,baddie_count do
-        local baddie_type = "tree"
-        if baddie_code == "f" then
-          baddie_type = "flower"
-        elseif baddie_code == "w" then
-          baddie_type = "wisp"
-        end
-        add(my_batch.baddies, baddie_type)
+        add(my_batch.baddies, baddie_code)
       end
       i += 2
     end

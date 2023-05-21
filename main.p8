@@ -6,6 +6,7 @@ __lua__
 #include player.lua
 #include baddie.lua
 #include level.lua
+#include fleas.lua
 
 -- extent = 0 -- debugging; used for tracking max x extent of player attacks
 level = {
@@ -24,10 +25,8 @@ fx = {
   impacts = {},
   arrows = {},
   popups = {},
+  parts = {},
 }
-
--- dists = {}
-
 
 function handle_timers(ts, dt)
   foreach(ts, function(t)
@@ -59,7 +58,7 @@ function game_init()
       __draw = game_draw
     end
   })
-  music(4)
+  -- music(4)
 end
 
 function _init()
@@ -77,13 +76,6 @@ end
 
 function _update()
   __update()
-end
-
-function level_init_update()
-  local now = time()
-  local dt = now - last_ts
-  last_ts = now
-  handle_timers(timers, dt)
 end
 
 function level_init_draw()
@@ -114,6 +106,13 @@ function game_update()
     impact.ttl -= dt
     if impact.ttl <= 0 then
       del(fx.impacts, impact)
+    end
+  end)
+  foreach(fx.parts, function(part) 
+    printh("partdt, main: "..dt)
+    part:update(dt)
+    if part.ttl <= 0 then
+      del(fx.parts, part)
     end
   end)
   foreach(fx.arrows, function(arrow) 
@@ -203,18 +202,7 @@ function game_update()
       if killed != nil then
         del(bmgr[tbl], killed)
         if tbl == "baddies" then -- only add score / popup for baddie, not projectiles
-          add(fx.popups,
-            {
-              ttl=1,
-              color=0,
-              x=killed.x,
-              y=killed.y-5,
-              dy=0.8,
-              frame_index=1,
-              frames={228,229,230,231},
-              frame_wait=0.05,
-              since_last_frame=0
-            })
+          add_leaf_popup(killed.x, killed.y-5, 0.8)
           player.score += 1
         end
       end
@@ -222,18 +210,11 @@ function game_update()
     local boss_killed = bmgr:boss_combat_collision({x0,projectile.top_y,x1,projectile.bottom_y},player.map_x)
     if boss_killed then
       for i=1,5 do
-        add(fx.popups,
-        {
-          ttl=1,
-          color=0,
-          x=bmgr.boss:getDrawX(player.map_x) - (rnd(32) - 16),
-          y=bmgr.boss.y - (rnd(8) - 4),
-          dy=0.8 - (rnd(0.2) - 0.1),
-          frame_index=flr(rnd(4)) + 1,
-          frames={228,229,230,231},
-          frame_wait=0.05,
-          since_last_frame=0
-        })
+        add_leaf_popup(
+          bmgr.boss:getDrawX(player.map_x) - (rnd(32) - 16),
+          bmgr.boss.y - (rnd(8) - 4),
+          0.8 - (rnd(0.2) - 0.1)
+        )
       end
       player.score += 5
     end
@@ -294,11 +275,12 @@ function game_update()
         level.boss = levels[level_index].boss
         player:reset(level.direction, FREEZE_NONE)
         bmgr:reset()
-        music(4)
+        -- music(4)
         fx = {
           impacts = {},
           arrows = {},
           popups = {},
+          parts = {},
         }
         __update = game_update
         __draw = level_init_draw
@@ -335,6 +317,7 @@ function game_update()
       impacts = {},
       arrows = {},
       popups = {},
+      parts = {},
     }
     __update = game_update
     __draw = level_init_draw
@@ -347,11 +330,19 @@ function game_update()
   end
 end
 
-function timers_only()
+function timers_only() -- and particles!
   local now = time()
   local dt = now - last_ts
   last_ts = now
   handle_timers(timers, dt)
+
+  foreach(fx.parts, function(part) 
+    part:update(dt)
+    part.ttl -= dt
+    if part.ttl <= 0 then
+      del(fx.parts, part)
+    end
+  end)
 end
 
 function fade_draw(seq)
@@ -598,6 +589,10 @@ function game_draw()
     spr(impact.spr, impact.x, impact.y)
   end)
 
+  foreach(fx.parts, function(p)
+    p:draw()
+  end)
+
   foreach(fx.arrows, function(arrow) 
     spr(
       level.direction == 0 and 14 or 30,
@@ -688,6 +683,22 @@ function dshad(str, x, y, ow)
   end
   print(str, x+1, y, colors[1])
   print(str, x, y, colors[2])
+end
+
+
+function add_leaf_popup(x, y, dy)
+  add(fx.popups,
+  {
+    ttl=1,
+    color=0,
+    x=x,
+    y=y,
+    dy=dy,
+    frame_index=1,
+    frames={228,229,230,231},
+    frame_wait=0.05,
+    since_last_frame=0
+  })
 end
 
 __gfx__
@@ -848,8 +859,8 @@ __sfx__
 000100000d1320d1420e1420e1420f1421014210142101421014211132111321113210132101320f1320f1320e1320d1220d1220c1220b1220a1220a122091220811208112071120511204112031120211202112
 000300001c7421c742237022370218732187323a7022d7021472214722177021970214722147221a7021c7021472214722257022570214722147221d702227021472214722277022870214722147222c7022c702
 500900001a6501a6401a6401a6301a6301a6201962019610196001960019600196001a6001a600136000760007600086000860009600096000a6001a6002a6000960009602026020360203602036020000200002
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+040100000050207502095020b5020d5020e5021050212502035220352207522075320b5320c5420f5420f5421254214542185421854222502225021850214532175321a5421d5422054223542245422755227552
+040200001850207502095020b5020d5020e50210502125021b552195521855216552155421354212542115320f5320e5320c5220a522225020a55208552065420454203532035320253202532015220052200522
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

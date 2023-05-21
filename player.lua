@@ -109,6 +109,7 @@ player = {
       if p.od <= 0 then
         p.overdrive_on = false
         p.od = 0
+        sfx(10)
       end
     end
 
@@ -122,6 +123,28 @@ player = {
     }
     if read_bm(bmp, 2) and p.od > 0 and not exists(p.state, od_states) then
       p.overdrive_on = not p.overdrive_on
+      if p.overdrive_on == true then
+        -- stop the action and add a timer
+        __update = timers_only
+        p:change_state("victory")
+        for j=1,8 do
+          add(fx.parts, new_part(p.draw_x + 4, p.draw_y + 8, {5,6,8,9,14,14}, 5, 0.8))
+          sfx(9)
+        end
+        add(timers, {remaining=0.4, callback=function()
+          __update = game_update
+          p:change_state("stand")
+        end
+        })
+        add(timers, {remaining=0.1, callback=function()
+          for j=1,8 do
+            add(fx.parts, new_part(p.draw_x + 4, p.draw_y + 8, {5,6,8,9,14,14}, 5, 0.8))
+          end
+        end
+        })
+        else
+          sfx(10)
+      end
     end
 
     if p.invincible > 0 then
@@ -205,9 +228,10 @@ player = {
     end
 
     if p.overdrive_on then
-      local colors = {14,13,10,7,8}
-      pal(8,14)
-      pal(4,8)
+      if p.od > 1 or (p.od < 1 and ((p.od * 100) % 2 > 0)) then
+        pal(8,14)
+        pal(4,8)
+      end
     end
 
     local face_right = p.direction == 1
