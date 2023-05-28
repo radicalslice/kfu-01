@@ -5,6 +5,11 @@ baddie_bits = {
   apple = {114,115,116},
   boss = {79,79,95,111,127,104}
 }
+
+boss_healths = {2,3,5}
+boss_state_ttl = {1, 0.5, 0.3}
+boss_throw_thresh = {0.95, 0.5, 0.3}
+baddie_speed = {1.4, 1.4, 2}
 bmgr = {
   baddies = {},
   bits = {},
@@ -23,7 +28,8 @@ bmgr = {
       y,
       (direction == 0 and 8 or -8) + (rnd(2) - 1),
       -3 + (rnd(2) - 1),
-      direction)
+      direction,
+      typ)
       )
     end)
   end,
@@ -90,13 +96,8 @@ bmgr = {
     return count
   end,
 
-  -- return number of colliding baddies
   player_boss_collision = function(bm,playerbb,x_offset)
-    if bm.boss == nil then
-      return false
-    end
-
-    if bm.boss.state == "dead" then
+    if bm.boss:can_collide() != true then
       return false
     end
 
@@ -107,25 +108,16 @@ bmgr = {
     return false
   end,
   player_boss_buffer_collision = function(bm,playerbb,x_offset)
-    if bm.boss == nil then
+    if bm.boss:can_collide() != true then
       return false
     end
     
-    if bm.boss.state == "dead" then
-      return false
-    end
-
     if collides_new(playerbb, bm.boss:getBB(x_offset)) then
       -- change boss state, that should trigger the boss to walk backwards
       local should_back_up = rnd()
       local dist_to_edge = abs(bm.boss:getDrawX(x_offset) - (bm.boss.direction == 0 and 120 or 0))
       if should_back_up > 0.92 and dist_to_edge >= 16 then
-        bm.boss.state = "walk"
-        bm.boss.state_t = 0.5
-        bm.boss.frames_current = bm.boss.frames.walk
-        bm.boss.frame_index = 1
-        bm.boss.since_last_state = 0
-        bm.boss.vx = (bm.boss.direction == 0) and 1 or -1
+        bm.boss:change_state("walk")
       end
     end
   end,
@@ -157,11 +149,7 @@ bmgr = {
   end,
 
   boss_combat_collision = function(bm,atkbb,x_offset)
-    if bm.boss == nil then
-      return false
-    elseif bm.boss.state == "dead" then
-      return false
-    elseif bm.boss.invincible > 0 then
+    if bm.boss:can_collide() != true then
       return false
     end
 
@@ -180,15 +168,11 @@ bmgr = {
       if bm.boss.health <= 0 then
         bm.boss.state = "dead"
         sfx(3)
-        foreach(baddie_bits.boss, function(bit)
-          add(bm.bits, new_bit(bit,
+        bm:add_bits(
+            "boss",
             bossbb[1],
             bossbb[2],
-            (bm.boss.direction == 0 and 2 or -2) + (rnd(1) - 1),
-            -3 + (rnd(2) - 1),
-            bm.boss.direction)
-          )
-        end
+            bm.boss.direction
         )
         return true
       end
@@ -214,10 +198,6 @@ bmgr = {
     end
     )
   end,
-
-  spawn_boss = function(bmgr, direction, start_x, difficulty)
-    bmgr.boss = new_boss(direction, start_x, difficulty)
-  end,
 }
 
 function new_basic_baddie(direction, height, width, x, y, frames, frame_wait)
@@ -225,7 +205,7 @@ function new_basic_baddie(direction, height, width, x, y, frames, frame_wait)
     direction = direction,
     x = x,
     y = y,
-    vx = direction == 0 and -1.4 or 1.4,
+    vx = direction == 0 and -(baddie_speed[level_index]) or baddie_speed[level_index],
     height = height,
     width = width,
     frames_walk = frames,
@@ -277,7 +257,7 @@ function small_front_bb(b)
 end
 
 function new_flower(direction, start_x)
-  local baddie = new_basic_baddie(direction, 1, 1, start_x, 89, {85,86,87,88},0.05)
+  local baddie = new_basic_baddie(direction, 1, 1, start_x, 89, {85,86,87,88,86},0.0666)
   baddie.type = "flower"
   baddie.getBB = small_bb
   baddie.getFrontBB = small_front_bb
@@ -287,7 +267,7 @@ end
 function new_projectile(direction, start_x, start_y)
   local proj = new_basic_baddie(direction, 1, 1, start_x, start_y, {97,98,99,100},0.05)
   proj.type = "apple"
-  proj.vx = direction == 0 and -1.8 or 1.8
+  proj.vx = direction == 0 and -baddie_speed[level_index] or baddie_speed[level_index]
   proj.update = basic_baddie_update
   proj.draw = basic_baddie_draw
   proj.getBB = function(p)
@@ -296,16 +276,16 @@ function new_projectile(direction, start_x, start_y)
   return proj
 end
 
-function new_boss(direction, start_x, difficulty)
+function new_boss(direction, start_x)
   local boss = {
     direction = direction,
     x = start_x,
     vx = direction == 0 and -1.4 or 1.4,
     y = 81,
-    max_health = difficulty == 1 and 3 or 5,
-    health = difficulty == 1 and 3 or 5,
-    throw_threshold = difficulty == 1 and 0.95 or 0.5,
-    state_t = difficulty == 1 and 1 or 0.5,
+    max_health = boss_healths[level_index],
+    health = boss_healths[level_index],
+    throw_threshold = boss_throw_thresh[level_index],
+    state_t = boss_state_ttl[level_index],
     state = "wait",
     since_last_state = 0,
     invincible = 0,
@@ -321,6 +301,13 @@ function new_boss(direction, start_x, difficulty)
     frame_wait = 0.1,
     since_last_frame = 0,
     frames_current = nil,
+    can_collide = function(b)
+      if b.state == "dead" 
+        or b.invincible > 0 then
+        return false
+      end
+      return true
+    end,
     update = function(b,dt,x_offset)
 
       if b.invincible > 0 then
@@ -330,21 +317,7 @@ function new_boss(direction, start_x, difficulty)
       end
 
       b.since_last_state += dt
-      if b.state == "walk" then
-        b:update_walk(dt)
-      elseif b.state == "wait" then
-        b:update_wait(dt)
-      elseif b.state == "upantic" then
-        b:update_upantic(dt, x_offset)
-      elseif b.state == "upthrow" then
-        b:update_upthrow(dt)
-      elseif b.state == "downantic" then
-        b:update_downantic(dt, x_offset)
-      elseif b.state == "downthrow" then
-        b:update_downthrow(dt)
-      elseif b.state == "dead" then
-        return
-      end
+      boss_state_funcs[b.state](b, dt, x_offset)
 
       -- do frame updates
       b.since_last_frame += dt
@@ -357,6 +330,8 @@ function new_boss(direction, start_x, difficulty)
       end
     end,
     draw = function(b, x_offset)
+      palt(0, false)
+      palt(15, true)
       if b.state == "dead" then
         return
       end
@@ -364,11 +339,16 @@ function new_boss(direction, start_x, difficulty)
       if b.invincible > 0 and flr(b.invincible * 100) % 2 > 0 then
         return
       end
+      if is_last_level() then
+        tree_pal_swap()
+        apple_pal_swap()
+      end
       local face_left = b.direction == 0
       spr(b.frames_current[b.frame_index],b:getDrawX(x_offset),b.y,2,2,(face_left and true or false),false)
       -- draw bounding box
       -- local x0, y0, x1, y1 = b:getBB(x_offset)
       -- rect(x0, y0, x1, y1,13)
+      pal()
     end,
     getDrawX = function(b, x_offset)
       if b.direction == 1 then
@@ -380,56 +360,12 @@ function new_boss(direction, start_x, difficulty)
     getBB = function(b, x_offset)
         return { b:getDrawX(x_offset),b.y,b:getDrawX(x_offset)+16,b.y+16 }
     end,
-    update_wait = function(b, dt)
-      if b.since_last_state > b.state_t then
-        local chance_to_throw = rnd()
-        if chance_to_throw > b.throw_threshold then
-          local up_or_down = rnd()
-          if up_or_down > 0.5 then
-            b:change_state("upantic")
-            -- b.frames_current = b.frames_upantic
-          else
-            b:change_state("downantic")
-            -- b.frames_current = b.frames_downantic
-          end
-        end
-      end
-    end,
-    change_state = function(b, s)
+    change_state = function(b, s, st)
       b.state = s
       b.since_last_state = 0
+      state_t = boss_state_ttl[level_index]
       b.frames_current = b.frames[s]
-      -- b.state_ttl = p.timings[s]
       b.frame_index = 1
-    end,
-    update_upantic = function(b, dt, x_antic)
-      if b.since_last_state > b.state_t then
-        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_antic), 82))
-        b:change_state("upthrow")
-      end
-    end,
-    update_upthrow = function(b, dt)
-      if b.since_last_state > 1 then
-        b:change_state("wait")
-      end
-    end,
-    update_downantic = function(b, dt, x_offset)
-      if b.since_last_state > b.state_t then
-        add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_offset), 88))
-        b:change_state("downthrow")
-      end
-    end,
-    update_downthrow = function(b, dt)
-      if b.since_last_state > 1 then
-        b:change_state("wait")
-      end
-    end,
-    update_walk = function(b, dt)
-      b.x += b.vx 
-
-      if b.since_last_state > b.state_t then
-        b:change_state("wait")
-      end
     end,
   }
   boss.frames_current = boss.frames["wait"]
@@ -444,13 +380,14 @@ function new_wisp(direction, start_x)
   return baddie
 end
 
-function new_bit(sprnum, x, y, vx, vy, direction)
+function new_bit(sprnum, x, y, vx, vy, direction, typ)
   local bit = {
     x = x,
     y = y,
     vx = vx,
     vy = vy,
     sprnum = sprnum,
+    typ = typ,
     ttl = 1,
     direction = direction,
     update = function(b,dt)
@@ -461,9 +398,23 @@ function new_bit(sprnum, x, y, vx, vy, direction)
       b.ttl -= dt
     end,
     draw = function(b, dt)
+      palt(0, false)
+      palt(15, true)
+      if is_last_level() then
+        if b.typ == "tree" then
+          tree_pal_swap()
+        elseif b.typ == "flower" then
+          flower_pal_swap()
+        elseif b.typ == "wisp" then
+          wisp_pal_swap()
+        elseif b.typ == "apple" then
+          apple_pal_swap()
+        end
+      end
       if flr(dt * 100) % 2 > 0 then
         spr(b.sprnum,b.x,b.y,1,1,(b.direction == 1 and true or false),false)
       end
+      pal()
     end
   }
   return bit
@@ -478,6 +429,20 @@ function basic_baddie_update(b, dt, vx)
     b.x += b.vx - vx
     b.since_last_frame += dt
 
+    if b.type != "apple" and rnd() > 0.7 then
+      local px = b.direction == 0 and b.x + 8 or b.x
+      local py = b.y + 14
+      local pc = {15,4,9}
+      if b.type == "flower" or b.type == "wisp" then
+        py = b.y + 6
+        if b.type == "wisp" then
+          pc = {7,6,5}
+        end
+      end
+
+      add(fx.parts, new_part(px, py, 1, 0.2, pc, 2, 0.8))
+    end
+
     if b.since_last_frame > b.frame_wait then
       b.frame_index += 1
       b.since_last_frame = 0
@@ -485,6 +450,26 @@ function basic_baddie_update(b, dt, vx)
         b.frame_index = 1
       end
     end
+end
+
+function tree_pal_swap()
+  pal(3,8)
+  pal(11,2)
+  pal(4, 13)
+end
+
+function wisp_pal_swap()
+  pal(7,11)
+  pal(6,3)
+end
+
+function apple_pal_swap()
+  pal(8,11)
+end
+
+function flower_pal_swap()
+  pal(10,12)
+  pal(3,8)
 end
 
 function basic_baddie_draw(b)
@@ -495,6 +480,75 @@ function basic_baddie_draw(b)
         -- bb = b:getFrontBB()
         -- rect(bb[1], bb[2], bb[3], bb[4],8)
       end
+      palt(0, false)
+      palt(15, true)
   local face_left = b.direction == 0
+  if is_last_level() then
+    if b.type == "tree" then
+      tree_pal_swap()
+    elseif b.type == "flower" then
+      flower_pal_swap()
+    elseif b.type == "wisp" then
+      wisp_pal_swap()
+    elseif b.type == "apple" then
+      apple_pal_swap()
+    end
+  end
+
   spr(b.frames_current[b.frame_index],face_left and b.x or b.x,b.y,b.width,b.height,(face_left and true or false),false)
+  pal()
 end
+
+boss_state_funcs = {
+  wait = function(b, dt)
+    if b.since_last_state > b.state_t then
+      -- chance to throw
+      if rnd() > b.throw_threshold then
+        -- up_or_down
+        if rnd() > 0.5 then
+          b:change_state("upantic")
+        else
+          b:change_state("downantic")
+        end
+      end
+    end
+  end,
+  walk = function(b, dt, x_offset)
+    b.vx = (b.direction == 0) and 1 or -1
+    b.x += b.vx 
+
+    -- make dust
+    if rnd() > 0.4 then
+      local px = b.direction == 0 and b:getDrawX(x_offset) + 16 or b:getDrawX(x_offset)
+      add(fx.parts, new_part(px, b.y + 14, 1, 0.2, {15,4,9}, 3, 0.8))
+    end
+    if b:getDrawX(x_offset) < 1 or b:getDrawX(x_offset) > 120 or b.since_last_state > b.state_t then
+      b:change_state("wait")
+    end
+  end,
+  upantic = function(b, dt, x_antic)
+    if b.since_last_state > b.state_t then
+      add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_antic), 82))
+      b:change_state("upthrow")
+    end
+  end,
+  upthrow = function(b, dt)
+    if b.since_last_state > 1 then
+      b:change_state("wait")
+    end
+  end,
+  downantic = function(b, dt, x_offset)
+    if b.since_last_state > b.state_t then
+      add(bmgr.projectiles, new_projectile(b.direction, b:getDrawX(x_offset), 88))
+      b:change_state("downthrow")
+    end
+  end,
+  downthrow = function(b, dt)
+    if b.since_last_state > 1 then
+      b:change_state("wait")
+    end
+  end,
+  dead = function(b, dt)
+    return
+  end,
+}

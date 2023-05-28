@@ -61,7 +61,7 @@ player = {
     p.score = p.last_score
     p.state_ttl = 0
     p.health = 100
-    p.od = 0
+    p.od = 5
     p.mash_count = 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = level_direction == 0 and map_extent - 16 or 16
@@ -128,7 +128,7 @@ player = {
         __update = timers_only
         p:change_state("victory")
         for j=1,8 do
-          add(fx.parts, new_part(p.draw_x + 4, p.draw_y + 8, {5,6,8,9,14,14}, 5, 0.8))
+          add(fx.parts, new_part(p.draw_x + 4, p.draw_y + 8, 5, 5, {5,6,8,9,14,14}, 5, 0.8))
           sfx(9)
         end
         add(timers, {remaining=0.4, callback=function()
@@ -138,7 +138,7 @@ player = {
         })
         add(timers, {remaining=0.1, callback=function()
           for j=1,8 do
-            add(fx.parts, new_part(p.draw_x + 4, p.draw_y + 8, {5,6,8,9,14,14}, 5, 0.8))
+            add(fx.parts, new_part(p.draw_x + 4, p.draw_y + 8, 5, 5,{5,6,8,9,14,14}, 5, 0.8))
           end
         end
         })
@@ -222,16 +222,17 @@ player = {
 
     return false
   end,
-  draw = function(p, dt)
+  draw = function(p, fc)
+    palt(0, false)
+    palt(15, true)
     if p.invincible > 0 and flr(p.invincible * 100) % 2 > 0 then
       return
     end
 
-    if p.overdrive_on then
-      if p.od > 1 or (p.od < 1 and ((p.od * 100) % 2 > 0)) then
+    if p.overdrive_on and 
+      (p.od > 2 or (p.od < 2 and fc % 2 > 0)) then
         pal(8,14)
         pal(4,8)
-      end
     end
 
     local face_right = p.direction == 1
@@ -245,9 +246,11 @@ player = {
 
     -- Draw player's collision box
     local bb = p:getBB()
+    --[[
     foreach({p:getBB(), p:getFrontBB(), p:getFrontBufferBB()}, function(bb)
-      -- rect(bb[1], bb[2], bb[3], bb[4], 11)
+      rect(bb[1], bb[2], bb[3], bb[4], 11)
     end)
+    ]]--
 
     local atkbits = {
       punch = {21, -2, 2, 7}, --spr, x left, x right, y
@@ -276,10 +279,7 @@ player = {
       -- rect(bb[0], bb[1], bb[2], bb[3],14)
     end
     ]]--
-    if p.overdrive_on then
-      pal(8,8)
-      pal(4,4)
-    end
+    pal()
   end,
   handle_hug = function(p, current_huggers)
     p.hugged_by_count = current_huggers
@@ -368,6 +368,19 @@ player_state_funcs = {
     end
   end,
   walk = function(p, dt, bm)
+    -- make a particle sometimes
+    if rnd() > 0.5 then
+      local px, vx = 0, 1
+
+      if p.draw_x > 63 and p.draw_x < 65 then
+        px = p.direction == 0 and p.draw_x + 8 or p.draw_x
+        vx = 2
+      else
+        px = p.direction == 0 and p.draw_x + 4 or p.draw_x +4
+      end
+    add(fx.parts, new_part(px, p.draw_y + 14, vx, 0.2, {15,4,9}, 2, 0.8))
+    end
+
     if p.map_x < 64 then
       p:set_draw_x(max(0,p.map_x))
     elseif p.map_x > (map_extent - 64) then

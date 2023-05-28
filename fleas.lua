@@ -1,6 +1,6 @@
 PART_MAX_G = 5
 GRAV = 0
-  function new_part(x, y, colors, start_size, ttl)
+  function new_part(x, y, vx, vy, colors, start_size, ttl)
     local newP = {
       colors = colors,
       x = x,
@@ -10,8 +10,8 @@ GRAV = 0
       size = start_size,
       max_size = start_size,
     }
-    newP.vel_x = sin(rnd()) * 5
-    newP.vel_y = cos(rnd()) * 5
+    newP.vel_x = sin(rnd()) * vx
+    newP.vel_y = cos(rnd()) * vy
 
     newP.draw = function(p)
         -- {5,6,8,9,14,14}

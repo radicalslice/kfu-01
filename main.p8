@@ -18,9 +18,11 @@ __update = nil
 __draw = nil
 
 timers = {}
+fc = 0
 impact_sprites = {16,32}
 -- for shifting arrows up and down
 arrow_offsets = {0, 1, 2, 2, 1, 0, -1, -2, -2, -1}
+victory_freeze = false
 fx = {
   impacts = {},
   arrows = {},
@@ -43,12 +45,12 @@ function game_init()
   printh("game init")
   last_ts = time()
   last_level_init = time()
-  -- spawn :: Num -> (tree || flower) -> Direction -> Void
-  -- bmgr:spawn({"flower", "flower", "flower"}, 1)
+  fc = 0
   level.batches = parse_batches(levels[level_index].batches)
   level.direction = levels[level_index].direction
   level.boss = levels[level_index].boss
   player:reset(level.direction, FREEZE_NONE)
+  bmgr:reset()
   __update = game_update
   __draw = level_init_draw
   -- allows level marquee to play
@@ -58,16 +60,26 @@ function game_init()
       __draw = game_draw
     end
   })
-  -- music(4)
+  music(4)
 end
 
 function _init()
   printh("cart init")
   last_ts = 0
+  level_index = 1
   __update = title_update
   __draw = title_draw
-  -- victory_init()
+  title_message[4] = 0.2
   player:reset(0, FREEZE_NONE)
+  player.last_score = 0
+  bmgr:reset()
+  fx = {
+    impacts = {},
+    arrows = {},
+    popups = {},
+    parts = {},
+  }
+  -- victory_init()
 end
 
 function _draw()
@@ -97,6 +109,7 @@ end
 function game_update()
   local now = time()
   local dt = now - last_ts
+  fc += 1
   handle_timers(timers, dt)
   local bm = btn()
   local bmp = btnp()
@@ -109,7 +122,6 @@ function game_update()
     end
   end)
   foreach(fx.parts, function(part) 
-    printh("partdt, main: "..dt)
     part:update(dt)
     if part.ttl <= 0 then
       del(fx.parts, part)
@@ -160,10 +172,12 @@ function game_update()
     end
   end
 
-  local boss_collide = bmgr:player_boss_collision(player:getFrontBB(),player.map_x)
-  player:handle_boss_collision(boss_collide)
+  if bmgr.boss != nil then
+    local boss_collide = bmgr:player_boss_collision(player:getFrontBB(),player.map_x)
+    player:handle_boss_collision(boss_collide)
 
-  bmgr:player_boss_buffer_collision(player:getFrontBufferBB(),player.map_x)
+    bmgr:player_boss_buffer_collision(player:getFrontBufferBB(),player.map_x)
+  end
 
   player:handle_hug(current_huggers)
 
@@ -187,7 +201,9 @@ function game_update()
         del(bmgr[tbl], killed)
       end
       end)
-    bmgr:boss_combat_collision(atkbb,player.map_x)
+      if bmgr.boss != nil then
+        bmgr:boss_combat_collision(atkbb,player.map_x)
+      end
   end
 
   foreach(player_projectiles, function(projectile)
@@ -207,17 +223,19 @@ function game_update()
         end
       end
     end)
-    local boss_killed = bmgr:boss_combat_collision({x0,projectile.top_y,x1,projectile.bottom_y},player.map_x)
-    if boss_killed then
-      for i=1,5 do
-        add_leaf_popup(
-          bmgr.boss:getDrawX(player.map_x) - (rnd(32) - 16),
-          bmgr.boss.y - (rnd(8) - 4),
-          0.8 - (rnd(0.2) - 0.1)
-        )
+      if bmgr.boss != nil then
+        local boss_killed = bmgr:boss_combat_collision({x0,projectile.top_y,x1,projectile.bottom_y},player.map_x)
+        if boss_killed then
+          for i=1,5 do
+            add_leaf_popup(
+              bmgr.boss:getDrawX(player.map_x) - (rnd(32) - 16),
+              bmgr.boss.y - (rnd(8) - 4),
+              0.8 - (rnd(0.2) - 0.1)
+            )
+          end
+          player.score += 5
+        end
       end
-      player.score += 5
-    end
 
   end)
   -- check if boss has been killed, draw arrow if so
@@ -246,9 +264,9 @@ function game_update()
   -- check if we should spawn boss
   if bmgr.boss == nil and should_spawn_batch(player.map_x, level.boss, level.direction) then
     if level.direction == 0 then
-      bmgr:spawn_boss(1, player.map_x - 40, level_index)
+      bmgr.boss = new_boss(1, player.map_x - 40)
     else
-      bmgr:spawn_boss(0, player.map_x + 40, level_index)
+      bmgr.boss = new_boss(0, player.map_x + 40)
     end
   end
   last_ts = now
@@ -275,7 +293,7 @@ function game_update()
         level.boss = levels[level_index].boss
         player:reset(level.direction, FREEZE_NONE)
         bmgr:reset()
-        -- music(4)
+        music(4)
         fx = {
           impacts = {},
           arrows = {},
@@ -388,7 +406,6 @@ end
 
 function victory_init()
 
-  -- player:reset(1,FREEZE_NONE)
   player:change_state("walk")
   player.map_x = -4
   player.draw_x = -4
@@ -396,6 +413,7 @@ function victory_init()
   player.y = 80
   player.invincible = 0
   music(9)
+  victory_freeze = true
   __update = victory_update
 
   __draw = victory_draw({9,0,12,2})
@@ -406,6 +424,10 @@ function victory_init()
   })
   add(timers, {remaining=1.5, callback=function()
       __draw = victory_draw({})
+    end
+  })
+  add(timers, {remaining=5, callback=function()
+      victory_freeze = false 
     end
   })
 end
@@ -431,8 +453,14 @@ function victory_draw(seq)
     palt(15,true)
     spr(228, 55, 48) 
     dshad("X"..player.score, 64, 50)
-    local now = time()
-    player:draw(now)
+    player:draw(fc)
+
+    if not victory_freeze then
+      dshad("press "..BUTTON_O.." or "..BUTTON_X.." to restart", 14, 64)
+      if btn(4) or btn(5) then
+        _init()
+      end
+    end
     pal()
   end
 end
@@ -442,6 +470,7 @@ function victory_update()
   local now = time()
   local dt = now - last_ts
   last_ts = now
+  fc += 1
   handle_timers(timers, dt)
   if player.draw_x >= 60 then
     player:change_state("victory")
@@ -510,7 +539,8 @@ function game_draw()
   local now = time()
 
   palt(0, false)
-  rectfill(0,0,128,128,12)
+  local sky_color = is_last_level() and 1 or 12
+  rectfill(0,0,128,128,sky_color)
   rectfill(0,0,128,32,0)
   if player.map_x > 64 and player.map_x < map_extent - 64 then
     for i=0,1 do
@@ -519,9 +549,12 @@ function game_draw()
   else
     map(0,14,0,96,16,16)
   end
-  palt(15, true)
-  player:draw(now)
+  pal()
 
+  player:draw(fc)
+
+  palt(0, false)
+  palt(15, true)
   foreach(player_projectiles, function(projectile) 
       local current_x = projectile.head_x
       if projectile.t == "punch" then
@@ -545,9 +578,12 @@ function game_draw()
         end
       end
   end)
+  pal()
 
   bmgr:draw(player.map_x, now)
 
+  palt(0, false)
+  palt(15, true)
   spr(0,2,5)
   -- player health draw
   line(13, 3, 63, 3, 7)
@@ -570,8 +606,10 @@ function game_draw()
   end
 
   -- score draw
-  spr(228, 80, 6) 
-  print("X"..player.score, 88, 8, 11)
+  -- spr(228, 80, 6) 
+  local lx, ly = (228 % 16) * 8, (228 \ 16) * 8
+  sspr(lx, ly, 8,8, 110, 2, 16,16)
+  print("X"..player.score, 111, 20, 11)
 
   -- boss health draw
   if bmgr.boss != nil then
@@ -699,6 +737,14 @@ function add_leaf_popup(x, y, dy)
     frame_wait=0.05,
     since_last_frame=0
   })
+end
+
+
+function is_last_level()
+  if level_index >= #levels then
+    return true
+  end
+  return false
 end
 
 __gfx__
