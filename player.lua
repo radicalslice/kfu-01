@@ -61,7 +61,7 @@ player = {
     p.score = p.last_score
     p.state_ttl = 0
     p.health = 100
-    p.od = 5
+    p.od = 0
     p.mash_count = 0
     p.since_last_frame, p.since_last_state = 0, 0
     p.draw_x = level_direction == 0 and map_extent - 16 or 16
