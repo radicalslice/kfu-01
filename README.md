@@ -15,7 +15,7 @@ Up arrow key - Toggle overdrive mode
 
 Z or C - Punch, or throw a wide fireball when in overdrive mode
 
-X or V - Kick, or throw two narrow fireballs when in overdrive mode
+X or V - Kick, or throw a split fireball when in overdrive mode
 
 ## How to Play
 As you walk through a level, enemies will appear on screen and try to make contact with you. In order to protect yourself, attack the enemies before they get too close.
